@@ -14,9 +14,9 @@
 - **Phase:** 1 - **DONE 2026-10-30.** All four slices verified; results in `docs/phase-1-test-checklist.md`.
 - **Phase 2 is split into two tracks** (developer, 2026-10-30):
   - **Track A, store/admin setup: DONE 2026-10-30.** See "Dev store state" in section 3. Done directly against the store, not through app code.
-  - **Track B, app work: plan approved 2026-10-30, in progress.** Plan: `docs/phase-2-plan.md` (slices 0-7). Slices 1 and 2 verified 2026-10-30 (see `docs/phase-2-test-checklist.md`). Next: **Slice 3 - AI provider + enrichment + relationships + queue** (needs `OPENAI_API_KEY` in `.env`, added by the developer).
+  - **Track B, app work: plan approved 2026-10-30, in progress.** Plan: `docs/phase-2-plan.md` (slices 0-7). Slices 1 and 2 verified 2026-10-30 (see `docs/phase-2-test-checklist.md`). Slice 3 verified 2026-10-30. In progress: `relationships-v2` prompt tuning, then **Slice 4 - Events**.
 - **Phase 1 demo is offline on purpose:** the Ski Wax offer product was archived, so `/api/offer` returns no offer until Phase 2's AI offer selection replaces it.
-- **Dev setup reminder:** tunnel changes on every `shopify app dev` run; update `extensions/intelligent-offer/src/config.js`. Last tunnel: `https://flip-comp-consumption-harper.trycloudflare.com`. Restart dev after any Prisma migration (the dev server caches the Prisma client).
+- **Dev setup reminder:** tunnel changes on every `shopify app dev` run; update `extensions/intelligent-offer/src/config.js`. Last tunnel: `https://victor-browsers-heated-extends.trycloudflare.com`. Restart dev after any Prisma migration (the dev server caches the Prisma client).
 - **Plans:** Phase 1 plan is summarized in section 7. Phase 2 (Track B) plan: `docs/phase-2-plan.md`. `stash@{0}` holds the abandoned first Phase 2 attempt (seed script); safe to drop once the developer confirms.
 
 ## 2. Status lists
@@ -38,6 +38,7 @@
 - Post-purchase extension `intelligent-offer` (unmodified template) renders after payment on a normal storefront checkout once the app is selected under Settings > Checkout > Post-purchase page (app version `ai-checkout-upsell-2`)
 
 ### Coded but NOT verified
+- **Phase 2 Slice 3:** `openai` SDK 7.45.1; `app/services/ai/{errors.js, schemas.js, validators.js, provider.server.js, openai.server.js}`; `app/services/catalog/{enrichment.server.js, relationships.server.js, enrichment-queue.server.js}`; intelligence page gains Process queue / Re-enrich all, category, errors, relationships table, auto-refresh while running. `npm test` 12/12, lint clean. First real run (`enrichment-v1`): 10/10 ENRICHED with `gpt-6-luna`, 19 relationships that match the designed complements (see `docs/phase-2-test-checklist.md` section 3). Defect found: the model put "JSON"/"object" in `format`; fixed with the `productFormat` field + validator rule + prompt `enrichment-v2`. Run 2 (`enrichment-v2`): 10/10, all formats fixed, 0 warnings/dropped; latency 2.4-5.4 s per call. **Slice 3 gate passed.** Open findings: checkout latency risk for Slice 6 and conservative relationships (fix: `relationships-v2`), see the checklist.
 - Double-accept protection: the button lock plus Shopify's `changeset_already_applied` error should prevent a second charge. Not tested.
 - 4s backend timeout in the extension (`withTimeout`): only the fast-failure case was tested.
 - "Offer not configured" (`OFFER_VARIANT_ID` unset) and tampered-`referenceId` paths: code-reviewed only.
@@ -170,6 +171,8 @@ CLI access: `shopify store auth --store gruns-dev-store.myshopify.com --scopes r
 - 2026-10-30: Demo products are store fixtures created directly through the Admin API (Shopify CLI `store execute`), not app code; the app stays focused on upsell features. The claude.ai Shopify connector was preferred but disconnected, so the CLI was used.
 - 2026-10-30: Approved product facts live in the merchant-owned metafield `custom.verified_facts`, written by the merchant; the app only reads them. The AI profile lives in the app database (planned `ProductIntelligence`), never in Shopify.
 - 2026-10-30: Planned for Track B: reduce the app's scope from `write_products` (template default) to `read_products`, since the upsell only reads products. Note: the template "Generate a product" page in `app._index.jsx` needs `write_products` and must be removed or replaced at the same time. Requires re-approving the app once.
+- 2026-10-30: AI layer: `AiError` codes (not_configured, timeout, provider_error, invalid_json, invalid_output); only `openai.server.js` imports the SDK; `store: false` on requests. Enrichment and relationships are separate AI calls with separate prompt versions; relationships for all profiled products are rebuilt whenever any profile changes (fine at ~10 products; a large catalog would rebuild only the affected neighbourhood). A failed re-enrichment keeps the previous profile and edges.
+- 2026-10-30: Pure modules imported by unit tests use explicit `.js` import paths (plain Node needs them; Vite accepts both).
 - 2026-10-30: Turned off ESLint `react/prop-types` repo-wide. Plain JS, no PropTypes dependency.
 - 2026-10-30: Every failure path (backend down, no offer, empty storage, calculateChangeset error) sends the buyer on with `done()` or `render: false`. The offer must never block checkout.
 - 2026-10-30: Extension uses the JavaScript React flavor of the `post_purchase_ui` template.
@@ -222,3 +225,6 @@ Slices:
 - 2026-10-30 - Claude Code (Opus 5.5): Phase 2 Slice 1 coded (scope reduction + template cleanup); lint and config validation pass. Waiting on the developer to run dev and confirm the app loads after scope re-approval.
 - 2026-10-30 - Claude Code (Opus 5.5): Slice 1 app load verified by the developer; scope grant pending confirmation. Slice 2 coded (migration applied to dev.sqlite, sync services, intelligence page, unit tests pass, lint clean). Waiting on a dev restart and the manual sync gate.
 - 2026-10-30 - Developer + Claude: Slice 1 and Slice 2 gates passed (granted scope `read_products`; sync created 10 / changed 1 on description edit / changed 0 on price edit). Results in `docs/phase-2-test-checklist.md`.
+- 2026-10-30 - Claude Code (Opus 5.5): Slices 1-2 committed (`1cbcb9f`). Developer added `OPENAI_API_KEY` + `OPENAI_MODEL=gpt-6-luna` to `.env` (verified present, not printed). Slice 3 coded and unit-tested; waiting on a dev restart and the first real enrichment run.
+- 2026-10-30 - Developer + Claude: first live enrichment run succeeded (10/10, 19 sensible edges). Found and fixed the `format` -> "JSON"/"object" defect (`enrichment-v2`). Waiting on the re-run.
+- 2026-10-30 - Developer + Claude: run 2 passed (10/10 `enrichment-v2`, formats fixed, latency recorded). Slice 3 committed. Started `relationships-v2` (more complete edge lists) at the developer's request.

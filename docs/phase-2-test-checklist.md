@@ -24,3 +24,23 @@ Product Intelligence + AI offer selection on `gruns-dev-store`. Plan: `docs/phas
 | 2.6 | Archive a product + sync | Row retired, edges removed | ⏳ | Covered again in Slice 4 (Events) |
 
 Observation for Slice 4: the template's price-change Events subscription still delivers on a price edit (`handle: product-price-change`). Slice 4 replaces it with content-only triggers.
+
+## Slice 3: AI enrichment + relationships
+
+| # | Scenario | Expected | Status | Evidence |
+|---|---|---|---|---|
+| 3.1 | `gpt-6-luna` accepts strict JSON-schema output | All products ENRICHED, no errors | ✅ | Run 1 (`enrichment-v1`): 10/10 ENRICHED, `modelName = gpt-6-luna`, 0 errors |
+| 3.2 | Fact references are real | Every factRef is an exact verified fact | ✅ | All stored factRefs match `custom.verified_facts` |
+| 3.3 | Relationships match the designed complements | Powder <-> Shaker, Pouch -> Jar/Travel packs, Jar/Tin -> Pouch | ✅ | 19 edges; e.g. Powder -> Shaker 0.91, Shaker -> Powder 0.96, Jar -> Pouch 0.95 |
+| 3.4 | Redundancy: bundle doesn't offer what it contains | Starter Bundle -> not Pouch, not Jar | ✅ | Bundle -> Travel Packs, Tin, Evening Gummies |
+| 3.5 | Low-relevance product gets no forced offer | Canvas Tote -> 0 edges | ✅ | 0 outgoing edges |
+| 3.6 | Same-line upsizing is typed UPGRADE | Travel Packs -> Pouch = UPGRADE | ✅ | UPGRADE 0.36 (excluded by ranking policy in Slice 5) |
+| 3.7 | Bad `format` values rejected | No "JSON"/"object" formats | ✅ (after fix) | Run 1 stored `"object"` (Starter Bundle) and `"JSON"` (Shaker). Fix: field renamed `productFormat`, validator rejects data-type words, prompt `enrichment-v2`. Run 2: all 10 formats are physical descriptions |
+| 3.8 | Prompt version bump re-enriches everything | Process queue re-enriches all 10 with `enrichment-v2` | ✅ | `[queue] {"enriched":10,"failed":0,"relationshipsUpdated":10}`; 0 warnings, 0 dropped edges |
+| 3.9 | Latency recorded | ms per call from `[enrich]` / `[relationships]` logs | ✅ | Enrichment 2459-3888 ms, relationships 2413-5428 ms (gpt-6-luna, sequential, ~70 s per full run) |
+| 3.10 | Validator unit tests | Pass | ✅ | `npm test` 13/13 |
+| 3.11 | Failure keeps the previous profile | FAILED row keeps profile and edges | 📝 | Code path in `enrichment-queue.server.js`; not triggered live yet |
+
+**Findings from run 2 (to address):**
+- **Checkout latency risk:** offline calls take ~2.5-5.4 s; the planned checkout AI selection budget is 2.5 s. Measure the (smaller) selection call in Slice 6; if it's too slow, pre-generate offer copy offline and keep checkout deterministic + cached.
+- **Run-to-run variability / conservative edges:** run 2 produced 17 edges (run 1: 19), mostly 1-2 per product. Travel Packs kept only an UPGRADE edge (excluded by policy) and lost Travel Tin; Canvas Tote gained a weak Tin edge (0.56). Fix: `relationships-v2` prompt asks for every reasonable fit (up to 5), plus a minimum score in the Slice 5 ranking.
