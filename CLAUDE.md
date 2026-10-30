@@ -50,9 +50,9 @@ You are the implementation partner for a Senior Full Stack Shopify Engineer case
 - [x] Shopify CLI app scaffolded from https://shopify.dev/docs/apps/build/scaffold-app.
 - [x] App installed on the development store and basic embedded app works.
 - [x] Generated a product through the scaffold's starter flow.
-- [ ] Repository structure, package versions, app name, scopes and current files: **Claude must inspect**.
-- [ ] Post-purchase UI extension: **not confirmed as generated or functioning**.
-- [ ] Full test checkout, Bogus Gateway and post-purchase offer: **not yet verified**.
+- [x] Repository structure, package versions, app name, scopes and current files: inspected (see `master_context.md` section 3).
+- [x] Post-purchase UI extension: generated as `extensions/intelligent-offer` (React flavor) and working on the dev store.
+- [x] Full test checkout, Bogus Gateway and post-purchase offer: verified end to end with a hardcoded offer (Phase 1). Results in `docs/phase-1-test-checklist.md`.
 - [ ] Product intelligence database / AI provider integration / analytics: **not yet built**.
 
 The user plans to develop with **Claude Code in Cursor** and wants a readable JavaScript implementation. They have experience with Shopify apps, Prisma, Polaris, and Shopify Admin APIs, but this particular repository is new. Do not confuse it with any other Shopify app.
@@ -270,7 +270,7 @@ Keep Shopify auth and signing code server-side; don't expose Admin API tokens to
 
 ## 8. Build phases and acceptance criteria
 
-### Phase 1 - Shopify post-purchase vertical slice (NEXT)
+### Phase 1 - Shopify post-purchase vertical slice (DONE 2026-10-30, see `docs/phase-1-test-checklist.md`)
 
 1. Inspect repo/config and establish exactly what Shopify scaffold and dependencies are present.
 2. Verify the official post-purchase extension template and current development-store setup.
@@ -282,7 +282,7 @@ Keep Shopify auth and signing code server-side; don't expose Admin API tokens to
 
 **Do not begin with AI, catalog sync or a pretty admin dashboard.** First prove that Shopify can actually show and apply an offer after checkout. The case-study brief allows a simulated standalone page if Shopify extension APIs block a real demo; use only as a documented fallback after investigating.
 
-### Phase 2 - Product intelligence sync + enrichment
+### Phase 2 - Product intelligence sync + enrichment (NEXT)
 
 1. Seed a small catalog (roughly 8-12 fictional wellness/convenience products) with deliberate complement relationships; use existing product as appropriate.
 2. Add an initial sync/manual trigger. Handle variants and meaningful product changes correctly.

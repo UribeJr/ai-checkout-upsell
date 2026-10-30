@@ -43,13 +43,19 @@ function getOfferConfig() {
 
 /**
  * Returns the offer to show after checkout, or null when there is nothing
- * safe to offer (not configured, variant missing, inactive or unavailable).
+ * safe to offer (not configured, already purchased, variant missing,
+ * inactive or unavailable).
  */
-export async function getOffer({ admin }) {
+export async function getOffer({ admin, purchasedVariantIds = [] }) {
   const { variantId, discountPercent } = getOfferConfig();
 
   if (!variantId) {
     console.warn("[offer] OFFER_VARIANT_ID is not set; showing no offer");
+    return null;
+  }
+
+  if (purchasedVariantIds.includes(Number(variantId))) {
+    console.log(`[offer] buyer already purchased variant ${variantId}; showing no offer`);
     return null;
   }
 

@@ -30,6 +30,22 @@ import {
 
 import { APP_URL } from "./config";
 
+// How long we wait for our backend before giving up. Our own choice to keep
+// checkout fast (Shopify doesn't publish a limit); on timeout we skip the offer.
+const BACKEND_TIMEOUT_MS = 4000;
+
+function withTimeout(promise) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`timed out after ${BACKEND_TIMEOUT_MS}ms`)),
+        BACKEND_TIMEOUT_MS,
+      ),
+    ),
+  ]);
+}
+
 extend(
   "Checkout::PostPurchase::ShouldRender",
   async ({ inputData, storage }) => {
@@ -41,20 +57,22 @@ extend(
   },
 );
 
-// Returns the offer from our backend, or null on any problem, so a backend
-// outage never blocks the buyer's checkout.
+// Returns the offer from our backend, or null on any problem (error, timeout),
+// so a slow or broken backend never blocks the buyer's checkout.
 async function fetchOffer(inputData) {
   try {
-    const response = await fetch(`${APP_URL}/api/offer`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${inputData.token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        referenceId: inputData.initialPurchase.referenceId,
+    const response = await withTimeout(
+      fetch(`${APP_URL}/api/offer`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${inputData.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          referenceId: inputData.initialPurchase.referenceId,
+        }),
       }),
-    });
+    );
     if (!response.ok) return null;
 
     const { offer } = await response.json();
@@ -68,17 +86,19 @@ async function fetchOffer(inputData) {
 // Asks our backend to sign the accepted offer. Returns the token, or null.
 async function fetchSignedChangeset(inputData, offerId) {
   try {
-    const response = await fetch(`${APP_URL}/api/sign-changeset`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${inputData.token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        referenceId: inputData.initialPurchase.referenceId,
-        offerId,
+    const response = await withTimeout(
+      fetch(`${APP_URL}/api/sign-changeset`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${inputData.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          referenceId: inputData.initialPurchase.referenceId,
+          offerId,
+        }),
       }),
-    });
+    );
     if (!response.ok) return null;
 
     const { token } = await response.json();

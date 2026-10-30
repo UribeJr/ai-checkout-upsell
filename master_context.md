@@ -11,13 +11,10 @@
 
 ## 1. Current status
 
-- **Phase:** 1 - Shopify post-purchase vertical slice
-- **Slice:** 2 of 4 - offer route (`api.offer.jsx`, `offer.server.js`, `post-purchase-auth.server.js`) + wire `ShouldRender`
-- **Last verified step:** Slice 1 gate passed 2026-10-30. The deployed (unmodified) template extension rendered on the post-purchase page of a normal storefront checkout (Bogus card 1, confirmation #7PPEYKQC0).
-- **Slice 2 gate passed 2026-10-30** (confirmation #HPJ4ACQ7C): the post-purchase page showed Selling Plans Ski Wax, $24.95 struck through, $21.21 (15% off), shipping $0.00, taxes $0.00, total $21.21, all from `calculateChangeset`.
-- **Slice 3 gate passed 2026-10-30** (confirmation #8KLQEI8PP): Pay now added Selling Plans Ski Wax ($24.95, 15% OFF -$3.74 = $21.21) to the same order; the order total became $971.16, paid as two Bogus card charges ($949.95 + $21.21); the wax ships as a second shipment. Verified on the order status page (not yet checked in Admin).
-- **Next concrete action:** Slice 4: negative tests (unset `OFFER_VARIANT_ID`; out-of-stock variant `68349213442271`; backend down), write `docs/phase-1-test-checklist.md`, update CLAUDE.md section 2. Repo is on GitHub (see section 3).
-- **Current tunnel:** `https://fairly-instances-herbal-classified.trycloudflare.com` (already in `config.js`). Dev link: `<tunnel>/extensions/dev-7308f61c-c20f-c5a2-20dd-740bf89a2f884ea871d8/purchase.post.render`
+- **Phase:** 1 - **DONE 2026-10-30.** All four slices verified; results in `docs/phase-1-test-checklist.md`.
+- **Next phase:** 2 - Product intelligence sync + enrichment (see CLAUDE.md section 8). Plan it before coding, per CLAUDE.md rule 4.
+- **Dev setup reminder:** tunnel changes on every `shopify app dev` run; update `extensions/intelligent-offer/src/config.js`. Last tunnel: `https://fairly-instances-herbal-classified.trycloudflare.com`.
+- **Uncommitted at last update:** Slice 4 changes (see session log). Commit and push when the developer approves.
 - **Approved plan:** `~/.claude/plans/pasted-content-id-487e-read-the-polished-iverson.md` (summarized in section 7 below so other agents don't need that file)
 
 ## 2. Status lists
@@ -29,6 +26,7 @@
 - Decline calls `done()` and reaches the normal thank-you page (developer-verified)
 - **Slice 3 / full Phase 1 happy path:** purchase A -> offer B -> Pay now -> signed changeset -> `applyChangeset` -> B added to the same order at 15% off with a second charge (order #8KLQEI8PP)
 - Shopify accepts the tutorial's changeset JWT format, including `iat: Date.now()` (milliseconds) and `variantId` (camelCase)
+- **Slice 4 failure paths:** already-purchased variant -> no offer (token includes `initialPurchase.lineItems[].product.variant.id`); offer variant unavailable -> no offer; backend unreachable -> straight to the thank-you page; regression of the offer page after hardening
 - **Post-purchase token claims** (from the TEMP log, now removed): top level `iss`, `sub`, `input_data`, `iat`; **no `dest`**. `input_data` keys: `token`, `shop`, `initialPurchase`, `locale`, `extensionPoint`, `version`. Shop comes from `input_data.shop.domain`, referenceId from `input_data.initialPurchase.referenceId`.
 - Embedded app installs and runs on `gruns-dev-store.myshopify.com` (developer-verified before Phase 1)
 - Starter "Generate a product" action works (developer-verified)
@@ -37,7 +35,8 @@
 
 ### Coded but NOT verified
 - Double-accept protection: the button lock plus Shopify's `changeset_already_applied` error should prevent a second charge. Not tested.
-- Negative paths (no offer configured, unavailable variant, backend down): coded to skip the page; not tested.
+- 4s backend timeout in the extension (`withTimeout`): only the fast-failure case was tested.
+- "Offer not configured" (`OFFER_VARIANT_ID` unset) and tampered-`referenceId` paths: code-reviewed only.
 
 ### Blocked / unknown
 - `input_data.shop.domain` is the myshopify domain on this dev store. On a store with a custom domain it might not be; verify before production.
@@ -72,7 +71,7 @@
 | B (offer) | Selling Plans Ski Wax, variant "Selling Plans Ski Wax" | `68349213540575` | $24.95 | `requiresSellingPlan: false`, 0 selling plan groups, so it can be bought one-time. Natural snowboard complement. |
 | Negative test (Slice 4) | The Out of Stock Snowboard | `68349213442271` | $885.95 | `availableForSale: false`, should produce no offer |
 
-CLI read access: `shopify store auth --store gruns-dev-store.myshopify.com --scopes read_products` (done), then `shopify store execute --store gruns-dev-store.myshopify.com --query '...'`.
+CLI access: `shopify store auth --store gruns-dev-store.myshopify.com --scopes read_products,read_inventory,write_inventory,read_locations` (done; dev store only), then `shopify store execute --store gruns-dev-store.myshopify.com --query '...'`.
 
 **Dev preview vs. deployed version:** while `shopify app dev` runs, the store serves the dev preview instead of the released version. Test the deployed extension on a normal checkout only after stopping dev (or running `shopify app dev clean`).
 
@@ -92,15 +91,16 @@ CLI read access: `shopify store auth --store gruns-dev-store.myshopify.com --sco
 | `extensions/intelligent-offer/src/index.jsx` | ShouldRender fetches the offer (render only if one exists); Render shows it with Shopify-calculated totals; "Pay now" gets a signed changeset and calls `applyChangeset`; both buttons lock after the first press; every path ends in `done()`. |
 | `extensions/intelligent-offer/src/config.js` | `APP_URL` (tunnel URL, update after each dev restart) |
 | `app/routes/api.offer.jsx` | Offer endpoint for ShouldRender: verifies the token, looks up the shop's offer, always answers `{ offer }` (null on any failure) |
-| `app/services/offer.server.js` | Phase 1 hardcoded offer from env vars; Admin GraphQL variant lookup; returns null when unavailable |
-| `app/services/post-purchase-auth.server.js` | Reads `shop` (`input_data.shop.domain`) and `referenceId` (`input_data.initialPurchase.referenceId`) from the verified token |
+| `app/services/offer.server.js` | Phase 1 hardcoded offer from env vars; Admin GraphQL variant lookup; returns null when not configured, already purchased, or unavailable |
+| `app/services/post-purchase-auth.server.js` | Reads `shop` (`input_data.shop.domain`), `referenceId` and the purchased variant IDs (`input_data.initialPurchase.lineItems`) from the verified token |
 | `app/routes/api.sign-changeset.jsx` | Accept endpoint: verifies the token, requires body `referenceId` to match the token's, re-runs `getOffer` (fresh eligibility check), signs the server-built changes |
 | `app/services/changeset.server.js` | `signChangeset()`: JWT `{ iss, jti, iat, sub, changes }` signed with `SHOPIFY_API_SECRET` (tutorial format) |
 | `package.json` | Added `jsonwebtoken` ^9.0.3 |
 | `.eslintrc.cjs` | Turned off `react/prop-types` (plain JS project without PropTypes) |
 | `.env` (gitignored, not committed) | `OFFER_VARIANT_ID=68349213540575`, `OFFER_DISCOUNT_PERCENT=15` |
 
-_Planned in Phase 1 (not yet created):_ `docs/phase-1-test-checklist.md`.
+| `docs/phase-1-test-checklist.md` | Manual test checklist with status and evidence for every Phase 1 scenario |
+| `CLAUDE.md` | Section 2 checkboxes and section 8 phase status updated after Phase 1 |
 
 ## 5. Decisions log (append-only)
 
@@ -117,6 +117,9 @@ _Planned in Phase 1 (not yet created):_ `docs/phase-1-test-checklist.md`.
 - 2026-10-30: All displayed prices come from `calculateChangeset` (Shopify), not from our backend. The backend sends only title, image, discount % and the changes.
 - 2026-10-30: Sign-changeset re-runs the full `getOffer` lookup before signing (instead of rebuilding the changes from the ID alone), so nothing is signed for an offer that became unavailable. Applies the CLAUDE.md rule to recheck eligibility before purchase changes.
 - 2026-10-30: Changeset signing lives in `changeset.server.js`. Lint only allows Node globals (`process`) in `*.server.js` files, and this keeps the app secret out of route files.
+- 2026-10-30: Exclude the offer when the buyer already bought that variant (from the verified token's line items), applied in both `/api/offer` and `/api/sign-changeset`.
+- 2026-10-30: Extension waits at most 4s (`BACKEND_TIMEOUT_MS`, our own choice; Shopify publishes no limit) for each backend call, then skips the offer or continues to the thank-you page.
+- 2026-10-30: Failure-path tests change store/config state instead of restarting dev (restarts change the tunnel URL): edit the cart in the dev link, set stock to 0 in Admin, point `APP_URL` at a dead host.
 - 2026-10-30: Turned off ESLint `react/prop-types` repo-wide. Plain JS, no PropTypes dependency.
 - 2026-10-30: Every failure path (backend down, no offer, empty storage, calculateChangeset error) sends the buyer on with `done()` or `render: false`. The offer must never block checkout.
 - 2026-10-30: Extension uses the JavaScript React flavor of the `post_purchase_ui` template.
@@ -163,3 +166,4 @@ Slices:
 - 2026-10-30 - Developer + Claude: confirmed token claims from the TEMP log (no `dest`; see Verified) and removed the log. Developer confirmed Decline reaches the thank-you page. Claude implemented Slice 3 (sign-changeset route, `changeset.server.js`, Pay now button); lint and smoke tests pass. Waiting on a real Accept test.
 - 2026-10-30 - Developer: tested Pay now via the dev link. **Slice 3 gate passed** (order #8KLQEI8PP: Ski Wax added at $21.21, second charge, total $971.16). Phase 1 happy path works end to end; Slice 4 (negative tests + checklist) remains.
 - 2026-10-30 - Claude Code (Opus 5.5): created private repo `UribeJr/ai-checkout-upsell` and pushed `main`. Single initial commit (a scaffold-only commit wasn't reproducible because package files were already modified). Pre-push scan: no secrets, `.env`/sqlite/dist/.shopify excluded; replaced an employer-store reference in this file with neutral wording.
+- 2026-10-30 - Developer + Claude: **Slice 4 done, Phase 1 complete.** Added the already-purchased exclusion and the 4s backend timeout. Tests passed: #5 regression, #6 already purchased, #7 unavailable variant, #8 backend unreachable (details in the checklist). Claude reset the Ski Wax stock via `inventorySetQuantities` (all three variants back to 10 available; the Ski Wax variant has on hand 12 with 2 committed by test orders). Updated CLAUDE.md sections 2 and 8.

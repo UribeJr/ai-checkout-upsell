@@ -21,7 +21,8 @@ export const loader = async ({ request }) => {
  */
 export const action = async ({ request }) => {
   const { sessionToken, cors } = await authenticate.public.checkout(request);
-  const { shop, referenceId } = getPostPurchaseContext(sessionToken);
+  const { shop, referenceId, purchasedVariantIds } =
+    getPostPurchaseContext(sessionToken);
   const body = await request.json().catch(() => ({}));
 
   // The purchase reference must match the one inside Shopify's signed token.
@@ -33,7 +34,7 @@ export const action = async ({ request }) => {
 
   try {
     const { admin } = await unauthenticated.admin(shop);
-    const offer = await getOffer({ admin });
+    const offer = await getOffer({ admin, purchasedVariantIds });
 
     if (!offer || offer.id !== body.offerId) {
       return cors(

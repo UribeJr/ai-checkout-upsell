@@ -13,7 +13,7 @@ export const loader = async ({ request }) => {
 // { offer } so the extension can treat `null` as "no post-purchase page".
 export const action = async ({ request }) => {
   const { sessionToken, cors } = await authenticate.public.checkout(request);
-  const { shop } = getPostPurchaseContext(sessionToken);
+  const { shop, purchasedVariantIds } = getPostPurchaseContext(sessionToken);
   if (!shop) {
     console.warn("[api.offer] no shop found in token; showing no offer");
     return cors(Response.json({ offer: null }));
@@ -21,7 +21,7 @@ export const action = async ({ request }) => {
 
   try {
     const { admin } = await unauthenticated.admin(shop);
-    const offer = await getOffer({ admin });
+    const offer = await getOffer({ admin, purchasedVariantIds });
     return cors(Response.json({ offer }));
   } catch (error) {
     // Never block checkout: if anything fails, the buyer just skips the offer.
