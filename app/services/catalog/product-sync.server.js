@@ -1,0 +1,110 @@
+import prisma from "../../db.server";
+import { fetchActiveProducts } from "./shopify-catalog.server";
+import { buildSnapshot, buildSourceHash } from "./product-snapshot";
+
+/**
+ * Keeps ProductIntelligence in step with the Shopify catalog.
+ *
+ * A product whose AI-relevant content changed (or that is new) is marked
+ * PENDING, which queues it for enrichment. Unchanged products are left alone,
+ * so a re-sync costs no AI calls.
+ */
+
+// Full sync: upsert every ACTIVE product and retire the ones that are gone.
+export async function syncCatalog({ shop, admin }) {
+  const products = await fetchActiveProducts(admin);
+  const now = new Date();
+  const counts = { created: 0, changed: 0, unchanged: 0, removed: 0 };
+
+  for (const product of products) {
+    const result = await upsertProductSnapshot({ shop, product, now });
+    counts[result]++;
+  }
+
+  const activeIds = products.map((product) => product.id);
+  counts.removed = await retireProducts({
+    shop,
+    where: { productId: { notIn: activeIds } },
+    now,
+  });
+
+  console.log(`[sync] ${shop}: ${JSON.stringify(counts)}`);
+  return counts;
+}
+
+/**
+ * Saves the latest snapshot of one product.
+ * Returns "created", "changed" or "unchanged".
+ */
+export async function upsertProductSnapshot({ shop, product, now = new Date() }) {
+  const snapshot = buildSnapshot(product);
+  const sourceHash = buildSourceHash(product.title, snapshot);
+
+  const fields = {
+    title: product.title,
+    handle: product.handle,
+    status: product.status,
+    snapshot: JSON.stringify(snapshot),
+    sourceHash,
+    syncedAt: now,
+    deletedAt: null,
+  };
+
+  const existing = await prisma.productIntelligence.findUnique({
+    where: { shop_productId: { shop, productId: product.id } },
+  });
+
+  if (!existing) {
+    await prisma.productIntelligence.create({
+      data: { ...fields, shop, productId: product.id, enrichmentStatus: "PENDING" },
+    });
+    return "created";
+  }
+
+  // A product coming back after being retired lost its relationships, so it
+  // needs enrichment again even if its content is the same.
+  const needsEnrichment =
+    existing.sourceHash !== sourceHash || existing.deletedAt !== null;
+
+  await prisma.productIntelligence.update({
+    where: { id: existing.id },
+    data: needsEnrichment
+      ? { ...fields, enrichmentStatus: "PENDING", attempts: 0, nextAttemptAt: null, lastError: null }
+      : fields,
+  });
+
+  return needsEnrichment ? "changed" : "unchanged";
+}
+
+/**
+ * Marks products as no longer sellable (archived, draft or deleted in
+ * Shopify) and removes every relationship pointing from or to them, so they
+ * can't be offered. Returns how many products were retired.
+ */
+export async function retireProducts({ shop, where, now = new Date() }) {
+  const retiring = await prisma.productIntelligence.findMany({
+    where: { shop, deletedAt: null, ...where },
+    select: { productId: true },
+  });
+  if (retiring.length === 0) return 0;
+
+  const productIds = retiring.map((row) => row.productId);
+
+  await prisma.$transaction([
+    prisma.productIntelligence.updateMany({
+      where: { shop, productId: { in: productIds } },
+      data: { deletedAt: now },
+    }),
+    prisma.productRelationship.deleteMany({
+      where: {
+        shop,
+        OR: [
+          { sourceProductId: { in: productIds } },
+          { targetProductId: { in: productIds } },
+        ],
+      },
+    }),
+  ]);
+
+  return productIds.length;
+}

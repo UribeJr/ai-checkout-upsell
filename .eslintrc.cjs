@@ -86,6 +86,7 @@ module.exports = {
         ".graphqlrc.{js,ts}",
         "shopify.server.{js,ts}",
         "**/*.server.{js,ts}",
+        "test/**/*.js",
       ],
       env: {
         node: true,

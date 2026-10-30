@@ -14,21 +14,116 @@ datasource db {
 }
 
 model Session {
-  id            String    @id
-  shop          String
-  state         String
-  isOnline      Boolean   @default(false)
-  scope         String?
-  expires       DateTime?
-  accessToken   String
-  userId        BigInt?
-  firstName     String?
-  lastName      String?
-  email         String?
-  accountOwner  Boolean   @default(false)
-  locale        String?
-  collaborator  Boolean?  @default(false)
-  emailVerified Boolean?  @default(false)
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
   refreshToken        String?
   refreshTokenExpires DateTime?
+}
+
+// ---------------------------------------------------------------------------
+// Product intelligence (Phase 2)
+//
+// Shopify stays the source of truth for products, prices and availability.
+// These tables hold only the app's own interpretation of the catalog.
+// JSON values are stored as strings so SQLite and Postgres behave the same.
+// IDs are Shopify GIDs.
+// ---------------------------------------------------------------------------
+
+// One row per Shopify product: a snapshot of its AI-relevant content, the AI
+// profile built from it, and the row's place in the enrichment queue.
+model ProductIntelligence {
+  id         String @id @default(cuid())
+  shop       String
+  productId  String
+  title      String
+  handle     String
+  status     String // Shopify status at last sync
+  snapshot   String // JSON: description, type, tags, options, variants, verifiedFacts
+  sourceHash String // hash of the AI-relevant fields only (no price or inventory)
+
+  // AI interpretation (app-owned, never written back to Shopify)
+  category          String?
+  format            String?
+  attributes        String? // JSON [{ name, value }]
+  useCases          String? // JSON string[]
+  crossSellAngles   String? // JSON string[]
+  factRefs          String? // JSON string[], a subset of verifiedFacts
+  enrichedHash      String? // sourceHash the current profile was built from
+  enrichmentVersion String?
+  modelName         String?
+  enrichedAt        DateTime?
+
+  // Queue state: the row itself is the job
+  enrichmentStatus String    @default("PENDING") // PENDING | PROCESSING | ENRICHED | FAILED
+  attempts         Int       @default(0)
+  nextAttemptAt    DateTime?
+  lastError        String?
+
+  syncedAt  DateTime
+  deletedAt DateTime? // no longer ACTIVE in Shopify
+
+  outgoing ProductRelationship[] @relation("source")
+
+  @@unique([shop, productId])
+  @@index([shop, enrichmentStatus, nextAttemptAt])
+}
+
+// AI-suggested, server-validated link from a source product to a product
+// worth offering after it. `score` ranks relevance; it is NOT a conversion
+// probability.
+model ProductRelationship {
+  id              String   @id @default(cuid())
+  shop            String
+  sourceProductId String
+  targetProductId String
+  type            String // COMPLEMENTARY | ACCESSORY | REFILL | UPGRADE
+  score           Float
+  reasoning       String
+  version         String // relationship prompt version
+  createdAt       DateTime @default(now())
+
+  source ProductIntelligence @relation("source", fields: [shop, sourceProductId], references: [shop, productId], onDelete: Cascade)
+
+  @@unique([shop, sourceProductId, targetProductId])
+  @@index([shop, sourceProductId])
+  @@index([shop, targetProductId])
+}
+
+// One offer decision per post-purchase checkout (referenceId): what was
+// eligible, what was chosen, by whom (AI, cache, fallback) and why.
+model OfferDecision {
+  id                String   @id @default(cuid())
+  shop              String
+  referenceId       String
+  basketKey         String // hash(sorted purchased variant IDs + prompt/policy versions)
+  orderContext      String // JSON: titles, quantities, subtotal, currency (no customer data)
+  candidates        String // JSON [{ variantId, productId, relationshipIds, rankScore, price }]
+  selectedVariantId String? // null = no offer
+  selectedProductId String?
+  headline          String?
+  description       String?
+  reasoning         String?
+  source            String // AI | CACHE | FALLBACK | NONE
+  fallbackReason    String? // timeout | invalid_output | provider_error | not_configured
+  modelName         String?
+  promptVersion     String?
+  durationMs        Int?
+  discountPercent   Int
+  createdAt         DateTime @default(now())
+
+  @@unique([shop, referenceId])
+  @@index([shop, basketKey, createdAt])
 }

@@ -14,15 +14,17 @@
 - **Phase:** 1 - **DONE 2026-10-30.** All four slices verified; results in `docs/phase-1-test-checklist.md`.
 - **Phase 2 is split into two tracks** (developer, 2026-10-30):
   - **Track A, store/admin setup: DONE 2026-10-30.** See "Dev store state" in section 3. Done directly against the store, not through app code.
-  - **Track B, app work: plan approved 2026-10-30, in progress.** Plan: `docs/phase-2-plan.md` (slices 0-7). Current slice: **1 - least-privilege cleanup** (`read_products`, template pages/config removed).
+  - **Track B, app work: plan approved 2026-10-30, in progress.** Plan: `docs/phase-2-plan.md` (slices 0-7). Slices 1 and 2 verified 2026-10-30 (see `docs/phase-2-test-checklist.md`). Next: **Slice 3 - AI provider + enrichment + relationships + queue** (needs `OPENAI_API_KEY` in `.env`, added by the developer).
 - **Phase 1 demo is offline on purpose:** the Ski Wax offer product was archived, so `/api/offer` returns no offer until Phase 2's AI offer selection replaces it.
-- **Dev setup reminder:** tunnel changes on every `shopify app dev` run; update `extensions/intelligent-offer/src/config.js`. Last tunnel: `https://fairly-instances-herbal-classified.trycloudflare.com`.
+- **Dev setup reminder:** tunnel changes on every `shopify app dev` run; update `extensions/intelligent-offer/src/config.js`. Last tunnel: `https://flip-comp-consumption-harper.trycloudflare.com`. Restart dev after any Prisma migration (the dev server caches the Prisma client).
 - **Plans:** Phase 1 plan is summarized in section 7. Phase 2 (Track B) plan: `docs/phase-2-plan.md`. `stash@{0}` holds the abandoned first Phase 2 attempt (seed script); safe to drop once the developer confirms.
 
 ## 2. Status lists
 
 ### Verified (observed working)
 - `npm run lint` passes (after Slice 2 changes)
+- **Phase 2 Slice 1:** Shopify grants the app only `read_products` (intelligence page + CLI log `Access scopes auto-granted: read_products`); the app loads with the new home page
+- **Phase 2 Slice 2:** first sync created 10 rows with facts; description edit -> `changed: 1`; price-only edit -> `changed: 0`; no prices stored in snapshots; `npm test` 5/5
 - **Slice 2:** ShouldRender -> `/api/offer` (token verified by `authenticate.public.checkout`) -> Admin lookup via `unauthenticated.admin(shop)` -> offer shown on the post-purchase page with Shopify-calculated totals (dev link, Bogus card 1). This also confirms the shop is resolved correctly from the token.
 - `calculateChangeset` accepts `variantId` (camelCase). Not yet confirmed for the signed changeset used by `applyChangeset`.
 - Decline calls `done()` and reaches the normal thank-you page (developer-verified)
@@ -39,6 +41,7 @@
 - Double-accept protection: the button lock plus Shopify's `changeset_already_applied` error should prevent a second charge. Not tested.
 - 4s backend timeout in the extension (`withTimeout`): only the fast-failure case was tested.
 - "Offer not configured" (`OFFER_VARIANT_ID` unset) and tampered-`referenceId` paths: code-reviewed only.
+- Canvas Tote description was edited during the Slice 2 test; the developer is restoring the original text ("A sturdy cotton canvas tote bag with the Demo Greens Co. logo.") and its price ($30.99 now, demo price $24.99) may still differ.
 
 ### Blocked / unknown
 - `input_data.shop.domain` is the myshopify domain on this dev store. On a store with a custom domain it might not be; verify before production.
@@ -216,3 +219,6 @@ Slices:
 - 2026-10-30 - Developer + Claude: **Slice 4 done, Phase 1 complete.** Added the already-purchased exclusion and the 4s backend timeout. Tests passed: #5 regression, #6 already purchased, #7 unavailable variant, #8 backend unreachable (details in the checklist). Claude reset the Ski Wax stock via `inventorySetQuantities` (all three variants back to 10 available; the Ski Wax variant has on hand 12 with 2 committed by test orders). Updated CLAUDE.md sections 2 and 8.
 - 2026-10-30 - Claude Code (Opus 5.5): Phase 2 attempt 1 (seed script + plan) was stashed at the developer's request (`stash@{0}`); the repo was reset to `b9a74b1`. Phase 2 split into Track A (store setup) and Track B (app). **Track A done:** created `custom.verified_facts`, created and published the 10 demo products (verified ACTIVE, online, sellable, facts present; a rerun skips all 10), and archived the 17 template products (IDs above). Phase 1 demo offer now offline by design.
 - 2026-10-30 - Claude Code (Opus 5.5): wrote and got approval for the Track B plan (`docs/phase-2-plan.md`: least privilege, sync, enrichment, Events, candidates, AI selection, docs). Slice 0: committed the Track A record and the plan.
+- 2026-10-30 - Claude Code (Opus 5.5): Phase 2 Slice 1 coded (scope reduction + template cleanup); lint and config validation pass. Waiting on the developer to run dev and confirm the app loads after scope re-approval.
+- 2026-10-30 - Claude Code (Opus 5.5): Slice 1 app load verified by the developer; scope grant pending confirmation. Slice 2 coded (migration applied to dev.sqlite, sync services, intelligence page, unit tests pass, lint clean). Waiting on a dev restart and the manual sync gate.
+- 2026-10-30 - Developer + Claude: Slice 1 and Slice 2 gates passed (granted scope `read_products`; sync created 10 / changed 1 on description edit / changed 0 on price edit). Results in `docs/phase-2-test-checklist.md`.
