@@ -53,7 +53,7 @@ export async function processQueue({ shop }) {
       summary[ok ? "enriched" : "failed"]++;
     }
 
-    if (summary.enriched > 0) {
+    if (summary.enriched > 0 || (await relationshipsOutdated(shop))) {
       summary.relationshipsUpdated = await rebuildRelationships(shop);
     }
 
@@ -135,6 +135,14 @@ async function enrichOne(row) {
   }
 }
 
+// True when stored edges were built with an older relationship prompt.
+async function relationshipsOutdated(shop) {
+  const outdated = await prisma.productRelationship.count({
+    where: { shop, version: { not: RELATIONSHIP_PROMPT_VERSION } },
+  });
+  return outdated > 0;
+}
+
 /**
  * Regenerates relationships for every product that has a profile.
  * Each product's edges are replaced in one transaction; if the AI call fails,
@@ -150,7 +158,10 @@ async function rebuildRelationships(shop) {
     const others = profiled.filter((row) => row.productId !== source.productId);
 
     try {
-      const { edges, dropped, modelName, durationMs } = await generateRelationships({ source, others });
+      const { edges, dropped, rejectedCopy, modelName, durationMs } = await generateRelationships({
+        source,
+        others,
+      });
 
       await prisma.$transaction([
         prisma.productRelationship.deleteMany({
@@ -161,6 +172,7 @@ async function rebuildRelationships(shop) {
             shop,
             sourceProductId: source.productId,
             ...edge,
+            factRefs: edge.factRefs ? JSON.stringify(edge.factRefs) : null,
             version: RELATIONSHIP_PROMPT_VERSION,
           })),
         }),
@@ -168,7 +180,7 @@ async function rebuildRelationships(shop) {
 
       updated++;
       console.log(
-        `[relationships] ${source.title}: ${edges.length} kept, ${dropped.length} dropped, model=${modelName} ${durationMs}ms`,
+        `[relationships] ${source.title}: ${edges.length} kept, ${dropped.length} dropped, ${rejectedCopy.length} copy rejected, model=${modelName} ${durationMs}ms`,
       );
     } catch (error) {
       await prisma.productIntelligence.update({

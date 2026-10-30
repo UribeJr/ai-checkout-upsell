@@ -28,6 +28,13 @@ const HEALTH_CLAIM_PATTERN = new RegExp(
 // Answers like "JSON" or "object" mean the model misread the field.
 const DATA_TYPE_WORDS = /^(json|object|string|text|array|null)$/i;
 
+// Prices and discounts come from Shopify and store policy, never from AI copy.
+const PRICE_OR_DISCOUNT_PATTERN =
+  /[$€£¥%]|\b(discount|save|savings|sale|deal|free|off|price|cost|cheap)\b/i;
+
+const MAX_HEADLINE_LENGTH = 60;
+const MAX_DESCRIPTION_LENGTH = 160;
+
 export function containsHealthClaim(text) {
   return HEALTH_CLAIM_PATTERN.test(text);
 }
@@ -89,15 +96,52 @@ export function validateEnrichment(data, { verifiedFacts }) {
 }
 
 /**
+ * Checks buyer-facing offer copy against the target product's verified facts.
+ * Returns { ok, copy, problems }.
+ */
+export function validateOfferCopy({ headline, description, factRefs }, targetFacts) {
+  const problems = [];
+  const cleanHeadline = String(headline ?? "").trim();
+  const cleanDescription = String(description ?? "").trim();
+  const text = `${cleanHeadline} ${cleanDescription}`;
+
+  if (!cleanHeadline) problems.push("headline is empty");
+  if (cleanHeadline.length > MAX_HEADLINE_LENGTH) problems.push("headline is too long");
+  if (!cleanDescription) problems.push("description is empty");
+  if (cleanDescription.length > MAX_DESCRIPTION_LENGTH) problems.push("description is too long");
+  if (containsHealthClaim(text)) problems.push("health-claim wording");
+  if (PRICE_OR_DISCOUNT_PATTERN.test(text)) problems.push("mentions price or discount");
+
+  const refs = factRefs ?? [];
+  if (refs.length === 0) problems.push("cites no verified fact");
+  if (refs.some((ref) => !targetFacts.includes(ref))) problems.push("cites a fact the product doesn't have");
+
+  return {
+    ok: problems.length === 0,
+    problems,
+    copy: { headline: cleanHeadline, description: cleanDescription, factRefs: refs },
+  };
+}
+
+/**
  * Keeps only usable relationships: known target, not the product itself,
  * valid type, one edge per target. Scores are clamped to 0-1 and the top
- * MAX_RELATIONSHIPS by score are kept. Returns { edges, dropped }.
+ * MAX_RELATIONSHIPS by score are kept.
+ *
+ * Each edge's offer copy is checked against the target's verified facts. Bad
+ * copy doesn't drop the relationship; its copy is left empty (null), and
+ * checkout falls back to a template.
+ * Returns { edges, dropped, rejectedCopy }.
  */
-export function validateRelationships(data, { sourceProductId, catalogProductIds }) {
+export function validateRelationships(
+  data,
+  { sourceProductId, catalogProductIds, factsByProductId = {} },
+) {
   const known = new Set(catalogProductIds);
   const seenTargets = new Set();
   const edges = [];
   const dropped = [];
+  const rejectedCopy = [];
 
   for (const edge of data?.relationships ?? []) {
     const reason = (why) => dropped.push({ targetProductId: edge.targetProductId, why });
@@ -108,14 +152,23 @@ export function validateRelationships(data, { sourceProductId, catalogProductIds
     if (seenTargets.has(edge.targetProductId)) { reason("duplicate target"); continue; }
 
     seenTargets.add(edge.targetProductId);
+
+    const copyCheck = validateOfferCopy(edge, factsByProductId[edge.targetProductId] ?? []);
+    if (!copyCheck.ok) {
+      rejectedCopy.push({ targetProductId: edge.targetProductId, problems: copyCheck.problems });
+    }
+
     edges.push({
       targetProductId: edge.targetProductId,
       type: edge.type,
       score: Math.min(1, Math.max(0, Number(edge.score) || 0)),
       reasoning: String(edge.reasoning ?? "").trim().slice(0, MAX_TEXT_LENGTH),
+      headline: copyCheck.ok ? copyCheck.copy.headline : null,
+      description: copyCheck.ok ? copyCheck.copy.description : null,
+      factRefs: copyCheck.ok ? copyCheck.copy.factRefs : null,
     });
   }
 
   edges.sort((a, b) => b.score - a.score);
-  return { edges: edges.slice(0, MAX_RELATIONSHIPS), dropped };
+  return { edges: edges.slice(0, MAX_RELATIONSHIPS), dropped, rejectedCopy };
 }

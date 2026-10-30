@@ -3,4 +3,4 @@
 //
 // During local development this is the tunnel URL printed by `shopify app dev`,
 // and it changes on every run: update it here after restarting dev.
-export const APP_URL = "https://victor-browsers-heated-extends.trycloudflare.com";
+export const APP_URL = "https://stereo-chen-varieties-rocks.trycloudflare.com";

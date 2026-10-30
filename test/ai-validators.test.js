@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   containsHealthClaim,
   validateEnrichment,
+  validateOfferCopy,
   validateRelationships,
 } from "../app/services/ai/validators.js";
 
@@ -102,4 +103,43 @@ test("health-claim detector catches common wording, not ordinary copy", () => {
   assert.equal(containsHealthClaim("Clinically proven"), true);
   assert.equal(containsHealthClaim("Take your routine anywhere"), false);
   assert.equal(containsHealthClaim("7 single-serve packets"), false);
+});
+
+const tinFacts = ["Holds up to 6 gummies", "Hinged metal lid"];
+const goodCopy = {
+  headline: "Take your gummies on the go",
+  description: "A hinged metal tin that holds up to 6 gummies.",
+  factRefs: ["Holds up to 6 gummies"],
+};
+
+test("offer copy grounded in the target's facts passes", () => {
+  assert.equal(validateOfferCopy(goodCopy, tinFacts).ok, true);
+});
+
+test("offer copy is rejected for prices, discounts, claims, length or foreign facts", () => {
+  const cases = {
+    price: { ...goodCopy, description: "Only $9.99 today." },
+    discount: { ...goodCopy, headline: "Save 15% on the tin" },
+    claim: { ...goodCopy, description: "Boosts your energy on the go." },
+    length: { ...goodCopy, headline: "x".repeat(61) },
+    noFacts: { ...goodCopy, factRefs: [] },
+    foreignFact: { ...goodCopy, factRefs: ["56 gummies per pouch"] },
+  };
+  for (const [name, copy] of Object.entries(cases)) {
+    assert.equal(validateOfferCopy(copy, tinFacts).ok, false, name);
+  }
+});
+
+test("bad copy keeps the relationship but empties its copy", () => {
+  const { edges, rejectedCopy } = validateRelationships(
+    {
+      relationships: [
+        { targetProductId: "tin", type: "ACCESSORY", score: 0.8, reasoning: "Carries gummies", ...goodCopy, headline: "Save now" },
+      ],
+    },
+    { sourceProductId: "pouch", catalogProductIds: ["tin"], factsByProductId: { tin: tinFacts } },
+  );
+  assert.equal(edges.length, 1);
+  assert.equal(edges[0].headline, null);
+  assert.equal(rejectedCopy.length, 1);
 });

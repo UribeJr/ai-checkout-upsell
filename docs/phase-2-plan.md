@@ -2,6 +2,19 @@
 
 # Phase 2 Plan (Track B, app work): Product Intelligence + AI Offer Selection
 
+## Revision 2026-10-30: no AI call at checkout (developer decision)
+
+**Why:** live offline calls to `gpt-6-luna` took 2.4-5.4 s, against a 2.5 s checkout AI budget inside the extension's 4 s limit. Most checkouts would have timed out to the fallback.
+
+**What changes:**
+- **AI does its work offline only.** The relationship step (`relationships-v3`) now also writes buyer-facing **offer copy per relationship** (headline ≤ 60, description ≤ 160, `factRefs` from the *target's* verified facts). It's validated and stored on `ProductRelationship` (`headline`, `description`, `factRefs`; migration `relationship_offer_copy`). Bad copy keeps the relationship but stores null copy, and checkout then uses a template.
+- **Checkout (Pipeline B) is deterministic:** DB candidates -> rule filters -> one live Shopify stock/price check -> ranking -> stored copy. No `offer-selection.server.js`, no checkout AI timeout. `OfferDecision.source` = `AI_COPY` (stored relationship copy), `TEMPLATE` (copy missing) or `NONE`.
+- **Considered and rejected:** storing pairings in a product metafield read directly by the extension. It's slightly faster on paper, but it loses whole-basket logic and the live stock check, needs `write_products` again, mixes AI output with merchant facts, and the backend is still needed to sign the changeset.
+- **Optional later:** background AI selection per basket, cached for the next identical basket (never on the checkout path).
+
+Sections 2, 6, 7, 8 and 10-11 below are superseded where they mention live AI selection at checkout.
+
+
 ## Context
 
 - **Phase 1 is done** (`b9a74b1`): the hardcoded Ski Wax offer was shown, signed and applied to real Bogus orders.

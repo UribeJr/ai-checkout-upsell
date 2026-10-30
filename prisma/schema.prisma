@@ -92,6 +92,12 @@ model ProductRelationship {
   type            String // COMPLEMENTARY | ACCESSORY | REFILL | UPGRADE
   score           Float
   reasoning       String
+  // Buyer-facing copy for this pairing, written offline by AI and validated
+  // against the target's verified facts. Null if the copy failed validation;
+  // checkout then uses a template.
+  headline        String?
+  description     String?
+  factRefs        String? // JSON string[] of the target's verified facts used in the copy
   version         String // relationship prompt version
   createdAt       DateTime @default(now())
 

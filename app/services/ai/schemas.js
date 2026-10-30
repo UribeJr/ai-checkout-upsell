@@ -50,12 +50,16 @@ export const RELATIONSHIPS_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["targetProductId", "type", "score", "reasoning"],
+        required: ["targetProductId", "type", "score", "reasoning", "headline", "description", "factRefs"],
         properties: {
           targetProductId: { type: "string" },
           type: { type: "string", enum: RELATIONSHIP_TYPES },
           score: { type: "number", description: "0 to 1 relevance for a post-purchase offer." },
-          reasoning: { type: "string" },
+          reasoning: { type: "string", description: "Internal: why this pairing makes sense." },
+          // Buyer-facing copy for this pairing, shown on the post-purchase page.
+          headline: { type: "string", description: "At most 60 characters." },
+          description: { type: "string", description: "At most 160 characters." },
+          factRefs: { ...stringList, description: "Target product's verified facts used in the copy, copied exactly." },
         },
       },
     },

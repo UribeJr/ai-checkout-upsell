@@ -64,6 +64,8 @@ export const loader = async ({ request }) => {
       type: edge.type,
       score: edge.score,
       reasoning: edge.reasoning,
+      headline: edge.headline,
+      description: edge.description,
     })),
   };
 };
@@ -198,6 +200,7 @@ export default function Intelligence() {
               <s-table-header>Offer</s-table-header>
               <s-table-header>Type</s-table-header>
               <s-table-header format="numeric">Score</s-table-header>
+              <s-table-header>Offer copy (AI)</s-table-header>
               <s-table-header>Reasoning (AI)</s-table-header>
             </s-table-header-row>
             <s-table-body>
@@ -207,6 +210,15 @@ export default function Intelligence() {
                   <s-table-cell>{edge.target}</s-table-cell>
                   <s-table-cell>{edge.type}</s-table-cell>
                   <s-table-cell>{edge.score.toFixed(2)}</s-table-cell>
+                  <s-table-cell>
+                    {edge.headline ? (
+                      <s-text>
+                        <strong>{edge.headline}</strong> {edge.description}
+                      </s-text>
+                    ) : (
+                      <s-badge tone="caution">Template</s-badge>
+                    )}
+                  </s-table-cell>
                   <s-table-cell>{edge.reasoning}</s-table-cell>
                 </s-table-row>
               ))}

@@ -44,3 +44,15 @@ Observation for Slice 4: the template's price-change Events subscription still d
 **Findings from run 2 (to address):**
 - **Checkout latency risk:** offline calls take ~2.5-5.4 s; the planned checkout AI selection budget is 2.5 s. Measure the (smaller) selection call in Slice 6; if it's too slow, pre-generate offer copy offline and keep checkout deterministic + cached.
 - **Run-to-run variability / conservative edges:** run 2 produced 17 edges (run 1: 19), mostly 1-2 per product. Travel Packs kept only an UPGRADE edge (excluded by policy) and lost Travel Tin; Canvas Tote gained a weak Tin edge (0.56). Fix: `relationships-v2` prompt asks for every reasonable fit (up to 5), plus a minimum score in the Slice 5 ranking.
+
+## Revision: offer copy generated offline (`relationships-v3`)
+
+| # | Scenario | Expected | Status | Evidence |
+|---|---|---|---|---|
+| 3.12 | Relationship rebuild with copy | All edges rebuilt, no errors | ✅ | 25 edges, all `relationships-v3`, 0 product errors |
+| 3.13 | Copy validation | Grounded copy passes | ✅ | 25/25 copy accepted (0 template fallbacks); all `factRefs` are target-product facts |
+| 3.14 | More complete edge lists | 2-5 per product where sensible | ✅ | 1-4 per product (v2: mostly 1-2) |
+| 3.15 | Travel Packs has an eligible offer | Non-UPGRADE edge exists | ✅ | Travel Packs -> Pocket Travel Tin 0.57 (plus Pouch UPGRADE 0.88, excluded by policy) |
+| 3.16 | Copy unit tests | Pass | ✅ | `npm test` 16/16 (prices, discounts, claims, length, foreign facts, bad copy keeps the edge) |
+
+Notes: descriptions are factual rather than salesy (grounding tradeoff). Some relationship types are debatable (Bundle -> Travel Packs = REFILL); ranking uses scores and only excludes UPGRADE. Canvas Tote -> Tin 0.72 / Travel Packs 0.58: a 0.6 minimum score in Slice 5 keeps only the Tin.
