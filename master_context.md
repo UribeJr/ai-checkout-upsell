@@ -16,7 +16,7 @@
 - **Last verified step:** Slice 1 gate passed 2026-10-30. The deployed (unmodified) template extension rendered on the post-purchase page of a normal storefront checkout (Bogus card 1, confirmation #7PPEYKQC0).
 - **Slice 2 gate passed 2026-10-30** (confirmation #HPJ4ACQ7C): the post-purchase page showed Selling Plans Ski Wax, $24.95 struck through, $21.21 (15% off), shipping $0.00, taxes $0.00, total $21.21, all from `calculateChangeset`.
 - **Slice 3 gate passed 2026-10-30** (confirmation #8KLQEI8PP): Pay now added Selling Plans Ski Wax ($24.95, 15% OFF -$3.74 = $21.21) to the same order; the order total became $971.16, paid as two Bogus card charges ($949.95 + $21.21); the wax ships as a second shipment. Verified on the order status page (not yet checked in Admin).
-- **Next concrete action:** Slice 4: negative tests (unset `OFFER_VARIANT_ID`; out-of-stock variant `68349213442271`; backend down), write `docs/phase-1-test-checklist.md`, update CLAUDE.md section 2. Suggested: first git commits (scaffold, then Phase 1). Waiting on developer approval to commit.
+- **Next concrete action:** Slice 4: negative tests (unset `OFFER_VARIANT_ID`; out-of-stock variant `68349213442271`; backend down), write `docs/phase-1-test-checklist.md`, update CLAUDE.md section 2. Repo is on GitHub (see section 3).
 - **Current tunnel:** `https://fairly-instances-herbal-classified.trycloudflare.com` (already in `config.js`). Dev link: `<tunnel>/extensions/dev-7308f61c-c20f-c5a2-20dd-740bf89a2f884ea871d8/purchase.post.render`
 - **Approved plan:** `~/.claude/plans/pasted-content-id-487e-read-the-polished-iverson.md` (summarized in section 7 below so other agents don't need that file)
 
@@ -52,6 +52,7 @@
 | DB | Prisma + SQLite (`prisma/dev.sqlite`), only `Session` model so far |
 | Admin API version | `July26` (`app/shopify.server.js`) |
 | Dev store | `gruns-dev-store.myshopify.com` |
+| GitHub | `https://github.com/UribeJr/ai-checkout-upsell` (private, branch `main`) |
 | Scopes | `write_products,write_metaobjects,write_metaobject_definitions` |
 
 **Commands**
@@ -161,3 +162,4 @@ Slices:
 - 2026-10-30 - Developer + Claude: restarted dev (tunnel `fairly-instances-herbal-classified`), updated `APP_URL`, tested the dev link. **Slice 2 gate passed**: Ski Wax offer at $21.21 with Shopify-calculated totals.
 - 2026-10-30 - Developer + Claude: confirmed token claims from the TEMP log (no `dest`; see Verified) and removed the log. Developer confirmed Decline reaches the thank-you page. Claude implemented Slice 3 (sign-changeset route, `changeset.server.js`, Pay now button); lint and smoke tests pass. Waiting on a real Accept test.
 - 2026-10-30 - Developer: tested Pay now via the dev link. **Slice 3 gate passed** (order #8KLQEI8PP: Ski Wax added at $21.21, second charge, total $971.16). Phase 1 happy path works end to end; Slice 4 (negative tests + checklist) remains.
+- 2026-10-30 - Claude Code (Opus 5.5): created private repo `UribeJr/ai-checkout-upsell` and pushed `main`. Single initial commit (a scaffold-only commit wasn't reproducible because package files were already modified). Pre-push scan: no secrets, `.env`/sqlite/dist/.shopify excluded; replaced an employer-store reference in this file with neutral wording.
