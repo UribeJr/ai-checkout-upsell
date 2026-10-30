@@ -1,0 +1,11 @@
+name = "intelligent-offer"
+type = "checkout_post_purchase"
+uid = "7308f61c-c20f-c5a2-20dd-740bf89a2f884ea871d8"
+
+# [[metafields]]
+# namespace = "my-namespace"
+# key = "my-key"
+
+# [[metafields]]
+# namespace = "my-namespace"
+# key = "my-key-2"
