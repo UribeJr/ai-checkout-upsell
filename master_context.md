@@ -12,10 +12,12 @@
 ## 1. Current status
 
 - **Phase:** 1 - **DONE 2026-10-30.** All four slices verified; results in `docs/phase-1-test-checklist.md`.
-- **Next phase:** 2 - Product intelligence sync + enrichment (see CLAUDE.md section 8). Plan it before coding, per CLAUDE.md rule 4.
+- **Phase 2 is split into two tracks** (developer, 2026-10-30):
+  - **Track A, store/admin setup: DONE 2026-10-30.** See "Dev store state" in section 3. Done directly against the store, not through app code.
+  - **Track B, app work: plan approved 2026-10-30, in progress.** Plan: `docs/phase-2-plan.md` (slices 0-7). Current slice: **1 - least-privilege cleanup** (`read_products`, template pages/config removed).
+- **Phase 1 demo is offline on purpose:** the Ski Wax offer product was archived, so `/api/offer` returns no offer until Phase 2's AI offer selection replaces it.
 - **Dev setup reminder:** tunnel changes on every `shopify app dev` run; update `extensions/intelligent-offer/src/config.js`. Last tunnel: `https://fairly-instances-herbal-classified.trycloudflare.com`.
-- **Uncommitted at last update:** Slice 4 changes (see session log). Commit and push when the developer approves.
-- **Approved plan:** `~/.claude/plans/pasted-content-id-487e-read-the-polished-iverson.md` (summarized in section 7 below so other agents don't need that file)
+- **Plans:** Phase 1 plan is summarized in section 7. Phase 2 (Track B) plan: `docs/phase-2-plan.md`. `stash@{0}` holds the abandoned first Phase 2 attempt (seed script); safe to drop once the developer confirms.
 
 ## 2. Status lists
 
@@ -75,6 +77,48 @@ CLI access: `shopify store auth --store gruns-dev-store.myshopify.com --scopes r
 
 **Dev preview vs. deployed version:** while `shopify app dev` runs, the store serves the dev preview instead of the released version. Test the deployed extension on a normal checkout only after stopping dev (or running `shopify app dev clean`).
 
+**Dev store state (Phase 2 Track A, done 2026-10-30 via `shopify store execute`):**
+- Metafield definition `custom.verified_facts` (`list.single_line_text_field`, PRODUCT): merchant-owned approved facts. **Written by the merchant (here: us, once, standing in for the merchant). The app only reads it.** AI output is never stored there.
+- 10 fictional "Demo Greens Co." products, tagged `case-study-demo`, ACTIVE, published to the Online Store (`gid://shopify/Publication/229669241055`), untracked inventory. Copy and facts come from the approved catalog (stash `scripts/demo-catalog.js`). These are the store's only ACTIVE products.
+
+| Product | Product ID | Variants (ID, price) |
+|---|---|---|
+| Daily Greens Gummies, 28-Day Pouch | `15478588047583` | Original `68350166466783`, Berry `68350166499551` ($49.99) |
+| Daily Greens Gummies, 7-Day Travel Packs | `15478588211423` | Original `68350166696159` ($14.99) |
+| Daily Greens Powder, 30 Servings | `15478588342495` | Unflavored `68350166827231`, Mint `68350166859999` ($44.99) |
+| Stainless Shaker Bottle, 20 oz | `15478588473567` | Black `68350167023839`, Sage `68350167056607` ($16.99) |
+| Daily Greens Starter Bundle | `15478588604639` | Original `68350167351519` ($59.99) |
+| Glass Storage Jar | `15478588735711` | Clear `68350167646431` ($19.99) |
+| Pocket Travel Tin | `15478588932319` | Silver `68350167810271` ($9.99) |
+| Evening Routine Gummies, 28-Day Pouch | `15478589128927` | Original `68350169022687` ($39.99) |
+| Electrolyte Drink Mix, 10 Sticks | `15478589227231` | Citrus `68350169120991` ($19.99) |
+| Canvas Tote | `15478589423839` | Natural `68350169645279` ($24.99) |
+
+- **Archived template products (17).** To undo, set each back to its original status with `productUpdate(product: { id, status })`:
+
+| Product ID | Title | Original status |
+|---|---|---|
+| `gid://shopify/Product/15478097543391` | The Inventory Not Tracked Snowboard | ACTIVE |
+| `gid://shopify/Product/15478097576159` | Gift Card | ACTIVE |
+| `gid://shopify/Product/15478097608927` | The Draft Snowboard | DRAFT |
+| `gid://shopify/Product/15478097641695` | The Minimal Snowboard | ACTIVE |
+| `gid://shopify/Product/15478097739999` | The Out of Stock Snowboard | ACTIVE |
+| `gid://shopify/Product/15478097772767` | The Complete Snowboard | ACTIVE |
+| `gid://shopify/Product/15478097838303` | The Compare at Price Snowboard | ACTIVE |
+| `gid://shopify/Product/15478097903839` | Selling Plans Ski Wax | ACTIVE |
+| `gid://shopify/Product/15478097936607` | The Collection Snowboard: Hydrogen | ACTIVE |
+| `gid://shopify/Product/15478098002143` | The Videographer Snowboard | ACTIVE |
+| `gid://shopify/Product/15478098067679` | The Hidden Snowboard | ACTIVE |
+| `gid://shopify/Product/15478098198751` | The Multi-location Snowboard | ACTIVE |
+| `gid://shopify/Product/15478098231519` | The 3p Fulfilled Snowboard | ACTIVE |
+| `gid://shopify/Product/15478098264287` | The Multi-managed Snowboard | ACTIVE |
+| `gid://shopify/Product/15478098297055` | The Collection Snowboard: Oxygen | ACTIVE |
+| `gid://shopify/Product/15478098559199` | The Collection Snowboard: Liquid | ACTIVE |
+| `gid://shopify/Product/15478117925087` | Orange Snowboard | ACTIVE |
+
+- Test cart for a normal checkout: `https://gruns-dev-store.myshopify.com/cart/68350166466783:1` (28-Day Pouch, Original). The CLI's default dev link still points at the archived snowboard; for dev-link tests, swap the `/cart/<variant>:1` part.
+- CLI store login scopes: `read_products,write_products,read_publications,write_publications,read_inventory,write_inventory,read_locations` (CLI only; the app's scopes are unchanged).
+
 **Tunnel URL:** changes every `shopify app dev` run. After starting dev, copy the app URL into `extensions/intelligent-offer/src/config.js` (`APP_URL`). _(file created in Slice 2)_
 
 **Store prerequisites for testing:** Settings > Payments > Bogus Gateway active. Settings > Checkout > post-purchase page set to this app. At least two active products with inventory and a shipping rate. Pay with a Bogus credit card, not Shop Pay / Apple Pay / Google Pay (wallets don't surface the post-purchase page).
@@ -120,6 +164,9 @@ CLI access: `shopify store auth --store gruns-dev-store.myshopify.com --scopes r
 - 2026-10-30: Exclude the offer when the buyer already bought that variant (from the verified token's line items), applied in both `/api/offer` and `/api/sign-changeset`.
 - 2026-10-30: Extension waits at most 4s (`BACKEND_TIMEOUT_MS`, our own choice; Shopify publishes no limit) for each backend call, then skips the offer or continues to the thank-you page.
 - 2026-10-30: Failure-path tests change store/config state instead of restarting dev (restarts change the tunnel URL): edit the cart in the dev link, set stock to 0 in Admin, point `APP_URL` at a dead host.
+- 2026-10-30: Demo products are store fixtures created directly through the Admin API (Shopify CLI `store execute`), not app code; the app stays focused on upsell features. The claude.ai Shopify connector was preferred but disconnected, so the CLI was used.
+- 2026-10-30: Approved product facts live in the merchant-owned metafield `custom.verified_facts`, written by the merchant; the app only reads them. The AI profile lives in the app database (planned `ProductIntelligence`), never in Shopify.
+- 2026-10-30: Planned for Track B: reduce the app's scope from `write_products` (template default) to `read_products`, since the upsell only reads products. Note: the template "Generate a product" page in `app._index.jsx` needs `write_products` and must be removed or replaced at the same time. Requires re-approving the app once.
 - 2026-10-30: Turned off ESLint `react/prop-types` repo-wide. Plain JS, no PropTypes dependency.
 - 2026-10-30: Every failure path (backend down, no offer, empty storage, calculateChangeset error) sends the buyer on with `done()` or `render: false`. The offer must never block checkout.
 - 2026-10-30: Extension uses the JavaScript React flavor of the `post_purchase_ui` template.
@@ -167,3 +214,5 @@ Slices:
 - 2026-10-30 - Developer: tested Pay now via the dev link. **Slice 3 gate passed** (order #8KLQEI8PP: Ski Wax added at $21.21, second charge, total $971.16). Phase 1 happy path works end to end; Slice 4 (negative tests + checklist) remains.
 - 2026-10-30 - Claude Code (Opus 5.5): created private repo `UribeJr/ai-checkout-upsell` and pushed `main`. Single initial commit (a scaffold-only commit wasn't reproducible because package files were already modified). Pre-push scan: no secrets, `.env`/sqlite/dist/.shopify excluded; replaced an employer-store reference in this file with neutral wording.
 - 2026-10-30 - Developer + Claude: **Slice 4 done, Phase 1 complete.** Added the already-purchased exclusion and the 4s backend timeout. Tests passed: #5 regression, #6 already purchased, #7 unavailable variant, #8 backend unreachable (details in the checklist). Claude reset the Ski Wax stock via `inventorySetQuantities` (all three variants back to 10 available; the Ski Wax variant has on hand 12 with 2 committed by test orders). Updated CLAUDE.md sections 2 and 8.
+- 2026-10-30 - Claude Code (Opus 5.5): Phase 2 attempt 1 (seed script + plan) was stashed at the developer's request (`stash@{0}`); the repo was reset to `b9a74b1`. Phase 2 split into Track A (store setup) and Track B (app). **Track A done:** created `custom.verified_facts`, created and published the 10 demo products (verified ACTIVE, online, sellable, facts present; a rerun skips all 10), and archived the 17 template products (IDs above). Phase 1 demo offer now offline by design.
+- 2026-10-30 - Claude Code (Opus 5.5): wrote and got approval for the Track B plan (`docs/phase-2-plan.md`: least privilege, sync, enrichment, Events, candidates, AI selection, docs). Slice 0: committed the Track A record and the plan.
