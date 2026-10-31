@@ -3,7 +3,7 @@
 > Working context for Claude Code in Cursor. Read this file before planning or changing code.
 > This is a **job-interview case study**, not an official Gruns storefront or a production deployment.
 > Source brief: `Case_Study_Senior_Full_Stack_Shopify_Developer.pdf` (provided separately by the project owner).
-> Last context update: October 30, 2026.
+> Last context update: October 31, 2026.
 
 ## 0. Instructions for Claude Code
 
@@ -93,6 +93,9 @@ Initial catalog sync or product update webhook
 
 ### B. Customer post-purchase decision pipeline
 
+> **Revised 2026-10-30 (developer):** no LLM call at checkout. The AI writes offer copy offline per relationship; checkout = stored candidates -> deterministic rules -> live Shopify check -> stored or template copy. See `docs/phase-2-plan.md`. The pipeline below is the original suggested design.
+
+
 ```text
 Eligible Shopify checkout reaches post-purchase lifecycle
   -> authenticated extension/backend request with checkout reference/context
@@ -151,6 +154,9 @@ Desired structured output (illustrative; adapt schema to actual catalog):
 Enrichment data is a **hypothesis** until validated; don't present an LLM-inferred fact as a verified merchant claim. A relationship score is not a real probability of conversion.
 
 ### B. Runtime offer selection
+
+> **Revised 2026-10-30:** not built; superseded by offline offer copy (see section 3B note).
+
 
 Input (only already-eligible shortlist + compact order context):
 
@@ -284,7 +290,7 @@ Keep Shopify auth and signing code server-side; don't expose Admin API tokens to
 
 **Do not begin with AI, catalog sync or a pretty admin dashboard.** First prove that Shopify can actually show and apply an offer after checkout. The case-study brief allows a simulated standalone page if Shopify extension APIs block a real demo; use only as a documented fallback after investigating.
 
-### Phase 2 - Product intelligence sync + enrichment (NEXT)
+### Phase 2 - Product intelligence sync + enrichment (DONE 2026-10-31, see `docs/phase-2-test-checklist.md`)
 
 1. Seed a small catalog (roughly 8-12 fictional wellness/convenience products) with deliberate complement relationships; use existing product as appropriate.
 2. Add an initial sync/manual trigger. Handle variants and meaningful product changes correctly.
@@ -292,7 +298,10 @@ Keep Shopify auth and signing code server-side; don't expose Admin API tokens to
 4. Persist complementary relationships.
 5. Add candidate retrieval and deterministic filtering; verify multi-item and no-candidate scenarios.
 
-### Phase 3 - AI runtime selection + safe fallback
+### Phase 3 - AI runtime selection + safe fallback (REPLACED 2026-10-30)
+
+> Replaced by the architecture revision: offer copy is generated offline with the relationships, and checkout is deterministic (no runtime LLM). Delivered and verified in Phase 2 Slices 3, 5 and 6; see `docs/phase-2-plan.md`. The steps below record the original design.
+
 
 1. Build a provider abstraction and explicit input/output JSON schema.
 2. Rank 3-5 **eligible** variants; use the model to choose and write bounded, verified copy.
@@ -300,7 +309,7 @@ Keep Shopify auth and signing code server-side; don't expose Admin API tokens to
 4. Replace hardcoded extension offer with backend's validated recommendation.
 5. Demonstrate contrasting baskets choosing different offers; document what happens when AI is unavailable.
 
-### Phase 4 - Analytics, README and Loom readiness
+### Phase 4 - Analytics, README and Loom readiness (NEXT; README started in Phase 2 Slice 7)
 
 1. Record displayed impressions, accepted/declined outcomes and successfully applied additional revenue (with idempotency).
 2. Add minimal dashboard or API endpoint showing conversion, revenue impact and top offers.

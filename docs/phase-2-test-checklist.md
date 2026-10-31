@@ -2,6 +2,8 @@
 
 Product Intelligence + AI offer selection on `gruns-dev-store`. Plan: `docs/phase-2-plan.md`.
 
+**Phase 2 summary (2026-10-31):** all slices verified, including real test orders #1012-#1016. Still open: 4.7 (edit during a run, fix coded, not tested live) and 5.10 (stale-fact guard live, unit-tested only).
+
 **Status key:** ✅ Verified (observed) · ❌ Failed · ⏳ Not tested yet · 📝 Code-reviewed only
 
 ## Slice 1: least privilege

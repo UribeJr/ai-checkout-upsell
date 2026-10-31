@@ -14,10 +14,9 @@
 - **Phase:** 1 - **DONE 2026-10-30.** All four slices verified; results in `docs/phase-1-test-checklist.md`.
 - **Phase 2 is split into two tracks** (developer, 2026-10-30):
   - **Track A, store/admin setup: DONE 2026-10-30.** See "Dev store state" in section 3. Done directly against the store, not through app code.
-  - **Track B, app work: plan approved 2026-10-30, in progress.** Plan: `docs/phase-2-plan.md` (slices 0-7). Slices 1 and 2 verified 2026-10-30 (see `docs/phase-2-test-checklist.md`). Slice 3 verified 2026-10-30. **Architecture revised (developer): no AI call at checkout.** AI writes relationships + per-relationship offer copy offline (`relationships-v3`, migration `relationship_offer_copy`); checkout becomes deterministic. Verified 2026-10-30: 25 relationships with copy, 25/25 copy accepted (checklist 3.12-3.16). Slice 4 (Events) verified 2026-10-31 (archive/reactivate/content edit/price edit = no delivery; the mid-run queue fix still to confirm, checklist 4.7); committed `8dcc305`. **Slice 4b (developer-requested): Settings page with manual AI mode**, verified 2026-10-31 (checklist 4b.1-4b.7). **Slice 5 (candidate engine + ranking + Offer preview): verified and approved by the developer 2026-10-31** (unit tests, engine check on real data, Offer preview page; live stale-fact / out-of-stock runs and decision latency not separately recorded, checklist 5.10-5.12). **Slice 6 (engine wired into checkout): verified 2026-10-31** (real Bogus checkouts: Pouch -> Jar accepted, Powder -> Shaker declined, Pouch + Bundle -> Jar, Jar unavailable -> Tin; orders #1012-#1015 checked via CLI; one `OfferDecision` per checkout; engine 209-317 ms; checklist 6.1-6.8). 6.6 verified too (order #1016: Jar offered, made unavailable before Pay now, not added). Open findings: bundle-contains redundancy, uncapped multi-item bonus, top-8 live check limit. Next: Slice 7 (docs).
+  - **Track B, app work: plan approved 2026-10-30, in progress.** Plan: `docs/phase-2-plan.md` (slices 0-7). Slices 1 and 2 verified 2026-10-30 (see `docs/phase-2-test-checklist.md`). Slice 3 verified 2026-10-30. **Architecture revised (developer): no AI call at checkout.** AI writes relationships + per-relationship offer copy offline (`relationships-v3`, migration `relationship_offer_copy`); checkout becomes deterministic. Verified 2026-10-30: 25 relationships with copy, 25/25 copy accepted (checklist 3.12-3.16). Slice 4 (Events) verified 2026-10-31 (archive/reactivate/content edit/price edit = no delivery; the mid-run queue fix still to confirm, checklist 4.7); committed `8dcc305`. **Slice 4b (developer-requested): Settings page with manual AI mode**, verified 2026-10-31 (checklist 4b.1-4b.7). **Slice 5 (candidate engine + ranking + Offer preview): verified and approved by the developer 2026-10-31** (unit tests, engine check on real data, Offer preview page; live stale-fact / out-of-stock runs and decision latency not separately recorded, checklist 5.10-5.12). **Slice 6 (engine wired into checkout): verified 2026-10-31** (real Bogus checkouts: Pouch -> Jar accepted, Powder -> Shaker declined, Pouch + Bundle -> Jar, Jar unavailable -> Tin; orders #1012-#1015 checked via CLI; one `OfferDecision` per checkout; engine 209-317 ms; checklist 6.1-6.8). 6.6 verified too (order #1016: Jar offered, made unavailable before Pay now, not added). Open findings: bundle-contains redundancy, uncapped multi-item bonus, top-8 live check limit (future work, section 6). **Slice 7 (docs): first project README written 2026-10-31** as a living document. **Phase 2 DONE.** Next: Phase 4 (analytics), then revisit the README (demo-catalog setup still to decide).
 - **Cost model:** `cost.md` (repo root) is the running cost file. Update it whenever a price, cost driver or measured number changes.
-- **Phase 1 demo is offline on purpose:** the Ski Wax offer product was archived, so `/api/offer` returns no offer until Phase 2's AI offer selection replaces it.
-- **Dev setup reminder:** tunnel changes on every `shopify app dev` run; update `extensions/intelligent-offer/src/config.js`. Last tunnel: `https://won-honey-durable-britain.trycloudflare.com`. Restart dev after any Prisma migration (the dev server caches the Prisma client).
+- **Dev setup reminder:** tunnel changes on every `shopify app dev` run; update `extensions/intelligent-offer/src/config.js`. Last tunnel: `https://stuff-friend-university-concentrations.trycloudflare.com`. Restart dev after any Prisma migration (the dev server caches the Prisma client).
 - **Plans:** Phase 1 plan is summarized in section 7. Phase 2 (Track B) plan: `docs/phase-2-plan.md`. `stash@{0}` holds the abandoned first Phase 2 attempt (seed script); safe to drop once the developer confirms.
 
 ## 2. Status lists
@@ -59,11 +58,11 @@
 | Template | Shopify React Router app (`@shopify/shopify-app-react-router` 4.0.0, `react-router` 7.18.2, React 18), JavaScript/JSX |
 | Shopify CLI | 4.9.4 |
 | Node | 23.10.0 (engines `>=22.12`) |
-| DB | Prisma + SQLite (`prisma/dev.sqlite`), only `Session` model so far |
+| DB | Prisma + SQLite (`prisma/dev.sqlite`): `Session`, `ProductIntelligence`, `ProductRelationship`, `OfferDecision`, `ShopSettings` |
 | Admin API version | `July26` (`app/shopify.server.js`) |
 | Dev store | `gruns-dev-store.myshopify.com` |
 | GitHub | `https://github.com/UribeJr/ai-checkout-upsell` (private, branch `main`) |
-| Scopes | `write_products,write_metaobjects,write_metaobject_definitions` |
+| Scopes | `read_products` (since Phase 2 Slice 1) |
 
 **Commands**
 - `npm run dev` (= `shopify app dev`): starts the app + tunnel and injects `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET`
@@ -76,14 +75,14 @@
 - `OFFER_MAX_ORDER_RATIO`: price cap, offer price ≤ ratio × order subtotal, default `1`
 - `OFFER_DISCOUNT_PERCENT`: server-side discount policy, default `15`
 
-**Dev store test products (looked up 2026-10-30 via `shopify store execute`, read-only):**
+**Phase 1 test products (historical; archived in Phase 2 Track A, looked up 2026-10-30):**
 | Role | Product | Variant ID | Price | Notes |
 |---|---|---|---|---|
 | A (purchase) | The Inventory Not Tracked Snowboard | `68349213376735` | $949.95 | CLI's default preview cart already uses it |
 | B (offer) | Selling Plans Ski Wax, variant "Selling Plans Ski Wax" | `68349213540575` | $24.95 | `requiresSellingPlan: false`, 0 selling plan groups, so it can be bought one-time. Natural snowboard complement. |
 | Negative test (Slice 4) | The Out of Stock Snowboard | `68349213442271` | $885.95 | `availableForSale: false`, should produce no offer |
 
-CLI access: `shopify store auth --store gruns-dev-store.myshopify.com --scopes read_products,read_inventory,write_inventory,read_locations` (done; dev store only), then `shopify store execute --store gruns-dev-store.myshopify.com --query '...'`.
+CLI access: `shopify store auth --store gruns-dev-store.myshopify.com --scopes read_products,write_inventory,read_orders` (re-authorized 2026-10-31; dev store only), then `shopify store execute --store gruns-dev-store.myshopify.com --query '...'`.
 
 **Dev preview vs. deployed version:** while `shopify app dev` runs, the store serves the dev preview instead of the released version. Test the deployed extension on a normal checkout only after stopping dev (or running `shopify app dev clean`).
 
@@ -154,6 +153,7 @@ CLI access: `shopify store auth --store gruns-dev-store.myshopify.com --scopes r
 | `.eslintrc.cjs` | Turned off `react/prop-types` (plain JS project without PropTypes) |
 | `.env` (gitignored, not committed) | `OFFER_VARIANT_ID=68349213540575`, `OFFER_DISCOUNT_PERCENT=15` |
 
+| `README.md` | Project README (living document; replaced the template README in Slice 7, revisit after Phase 4) |
 | `cost.md` | Running cost model: prices (with source/date), cost drivers, token estimates, cost by catalog size, controls, levers, measured spend |
 | `app/routes/app.settings.jsx`, `app/services/settings.server.js` | Settings page: automatic vs manual AI updates (`ShopSettings.autoEnrich`) |
 | `docs/phase-1-test-checklist.md` | Manual test checklist with status and evidence for every Phase 1 scenario |
@@ -262,3 +262,4 @@ Slices:
 - 2026-10-31 - Developer + Claude Code (Opus 5.5): developer confirmed the Slice 6 checkout tests. DB: 4 checkouts -> 4 decisions (AI_COPY), engine 223-317 ms. Jar inventory tracking turned on for the test and back off afterwards via `shopify store execute` (no AI work triggered). Slice 6 committed.
 - 2026-10-31 - Claude Code (Opus 5.5): CLI store auth re-run with `read_orders` (developer approved in browser). Orders #1012-#1015 confirm 6.3-6.5; 6.6 was not actually exercised (moved back to ⏳).
 - 2026-10-31 - Developer + Claude Code (Opus 5.5): 6.6 run properly: Jar offered, Claude turned on Jar tracking (stock -2) via CLI while the offer page was open, Pay now -> thank-you page, order #1016 without the Jar. Jar tracking turned back off. All Slice 6 tests pass.
+- 2026-10-31 - Claude Code (Opus 5.5): Slice 7 per the approved plan: project README (status, architecture, decisions, setup, test checkout, admin pages, testing, cost, limitations, repo map), stale facts refreshed here and in `CLAUDE.md`. Demo-catalog setup left 'to be decided after Phase 4' (developer). Phase 2 done.
