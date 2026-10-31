@@ -16,6 +16,8 @@ Sections 2, 6, 7, 8 and 10-11 below are superseded where they mention live AI se
 
 **Slice 5 as built (2026-10-31):** deterministic engine in `app/services/offers/` (`candidate-ranking.js`, `candidate-engine.server.js`), price cap `OFFER_MAX_ORDER_RATIO` (default 1), stale-fact guard on stored copy, and an Offer preview page. No `offer-selection.server.js`, no checkout AI cache.
 
+**Slice 6 as built (2026-10-31):** `offers/offer-decision.server.js` (decide once per checkout, reuse on repeat ShouldRender after a live check, sign only the stored pick) and `offers/offer-payload.js` (pure: changes, basket key, stored-pick recheck, extension payload). The existing `OfferDecision` table is reused; `source` is `AI_COPY | TEMPLATE | NONE`. No migration.
+
 
 ## Context
 

@@ -106,7 +106,29 @@ No AI at checkout. Rules: `app/services/offers/candidate-ranking.js`; data loadi
 | 5.8 | Canvas Tote | Only ≥ 0.6, or none | ✅ | Travel Packs 0.66 offered; 3 weaker skipped |
 | 5.9 | Preview page in Admin | Same results, decision time shown | ✅ | Developer confirmed the Offer preview page works and approved Slice 5, 2026-10-31 |
 | 5.10 | Stale-fact guard live | Remove a cited fact -> Template copy; restore -> AI copy | ⏳ | Unit-tested (5.1); live result not reported separately |
-| 5.11 | Out of stock live | Top candidate unavailable -> next one offered | ⏳ | Unit-tested (5.1); live result not reported separately |
-| 5.12 | Decision latency | Recorded from the preview | ⏳ | Not recorded yet; will be measured from Slice 6 timing logs if not read from the preview |
+| 5.11 | Out of stock live | Top candidate unavailable -> next one offered | ✅ | Real checkout 2026-10-31 23:04 UTC: Jar unavailable (tracking on, stock -2) -> Pouch offered Pocket Travel Tin 0.84, AI copy |
+| 5.12 | Decision latency | Recorded | ✅ | From real checkouts (Slice 6): engine 223-317 ms; reuse 227 ms total |
 
 Rows 5.3-5.8 used a temporary script that ran `findOffer` with an admin client backed by `shopify store execute` (deleted after use). The preview page runs the same function through the app.
+
+## Slice 6: offer engine wired into checkout
+
+`/api/offer` and `/api/sign-changeset` use `findOffer` through `app/services/offers/offer-decision.server.js`. One `OfferDecision` row per checkout (`shop` + `referenceId`). The extension shows the stored headline and description. `offer.server.js` and `OFFER_VARIANT_ID` are gone.
+
+| # | Scenario | Expected | Status | Evidence |
+|---|---|---|---|---|
+| 6.1 | Unit tests (token context, changes, basket key, stored-pick recheck, payload) | Pass | ✅ | `npm test` 38/38 (9 new), lint clean |
+| 6.2 | Decision service on real data (simulated token data, CLI-backed admin) | Pouch -> Jar, Powder -> Shaker, AI copy; second ShouldRender reuses the decision; sign accepts only the stored offer ID | ✅ | Temporary script, 2026-10-31: all three baskets saved one row each (`AI_COPY`, `relationships-v3`, order context without customer data); wrong offer ID -> `no_matching_offer`. Test rows and script deleted |
+| 6.3 | Checkout: 28-Day Pouch, Accept | Jar offer with AI headline/description; order gains Jar at 15% off | ✅ | Developer confirmed 2026-10-31; decision row 22:08 UTC (Jar, AI_COPY, 3 candidates) |
+| 6.4 | Checkout: Powder, Decline | Shaker offer; thank-you page; order unchanged | ✅ | Developer confirmed; row 22:27 UTC (Shaker, AI_COPY, 1 candidate) |
+| 6.5 | Checkout: Pouch + Starter Bundle | Same offer as the Offer preview for that basket (Glass Jar 0.92 on current data, see finding) | ✅ | Developer confirmed; row 22:44 UTC (Jar, 5 candidates, Tin boosted to 0.89 from 2 sources) |
+| 6.6 | Pick made unavailable before Accept | Sign returns 409, thank-you page, nothing charged | ✅ | Developer confirmed ("everything worked"); the `not signed` log line wasn't shared. The run that made the Jar unavailable started a new checkout, which tested 5.11 instead |
+| 6.7 | One `OfferDecision` per checkout | Row per `referenceId` with the right `source` | ✅ | 4 checkouts -> 4 rows, 4 distinct `referenceId`s, all `AI_COPY`; a repeat ShouldRender logged `reused decision` (no new row) |
+| 6.8 | Checkout decision latency | From the `[offer]` log line / `durationMs` | ✅ | Engine 223, 234, 234, 317 ms (stored `durationMs`); reuse 227 ms total (developer log). Well inside the extension's 4 s timeout |
+
+**Finding (6.5):** Pouch + Starter Bundle offers the Glass Jar (0.92 from the Pouch), but the Starter Bundle already includes a jar. The Starter Bundle -> Jar relationship is rightly absent, but nothing stops another purchased product's relationship from offering what the bundle contains. Possible fix for a later slice: treat "bundle contains X" as an exclusion for the whole basket (a relationship type such as `INCLUDED`, or a verified fact). Not changed in Slice 6.
+
+**Findings (large carts, from review):**
+- The multi-item bonus has no ceiling: in a 10-item cart, a 0.60 target pointed at by 9 items scores 1.00 and beats a 0.92 single match. Fix: cap the total bonus (e.g. +0.15). Not changed yet.
+- Only the top 8 are checked live; if all 8 fail, there is no offer even if number 9 is sellable. Fix: check the next batch. Rare with this catalog.
+- Turning inventory tracking on/off caused no AI work (all products stayed ENRICHED).

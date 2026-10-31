@@ -1,6 +1,6 @@
 import { authenticate, unauthenticated } from "../shopify.server";
 import { getPostPurchaseContext } from "../services/post-purchase-auth.server";
-import { getOffer } from "../services/offer.server";
+import { getOfferToSign } from "../services/offers/offer-decision.server";
 import { signChangeset } from "../services/changeset.server";
 
 // The checkout sends a CORS preflight (OPTIONS) before the POST.
@@ -14,35 +14,42 @@ export const loader = async ({ request }) => {
  * Called when the buyer accepts the offer. Returns a changeset token signed
  * with our app secret; the extension passes it to Shopify's applyChangeset.
  *
- * The browser only tells us *which* offer was accepted. The changes we sign
- * are rebuilt here from a fresh offer lookup, so the buyer can't change the
- * product, quantity or discount, and nothing is signed for an offer that is
- * no longer available.
+ * The browser only tells us *which* offer was accepted. We sign only the
+ * offer stored for this checkout (OfferDecision), with changes rebuilt here
+ * after a fresh availability check, so the buyer can't change the product,
+ * quantity or discount, and nothing is signed for an offer that is no longer
+ * available.
  */
 export const action = async ({ request }) => {
   const { sessionToken, cors } = await authenticate.public.checkout(request);
-  const { shop, referenceId, purchasedVariantIds } =
-    getPostPurchaseContext(sessionToken);
+  const context = getPostPurchaseContext(sessionToken);
   const body = await request.json().catch(() => ({}));
 
   // The purchase reference must match the one inside Shopify's signed token.
-  if (!shop || !referenceId || body.referenceId !== referenceId) {
+  if (!context.shop || !context.referenceId || body.referenceId !== context.referenceId) {
     return cors(
       Response.json({ error: "Invalid purchase reference" }, { status: 400 }),
     );
   }
 
   try {
-    const { admin } = await unauthenticated.admin(shop);
-    const offer = await getOffer({ admin, purchasedVariantIds });
+    const { admin } = await unauthenticated.admin(context.shop);
+    const { changes, reason } = await getOfferToSign({
+      shop: context.shop,
+      admin,
+      context,
+      offerId: body.offerId,
+    });
 
-    if (!offer || offer.id !== body.offerId) {
+    if (!changes) {
+      console.warn(`[api.sign-changeset] ${context.referenceId}: not signed (${reason})`);
       return cors(
         Response.json({ error: "Offer is no longer available" }, { status: 409 }),
       );
     }
 
-    const token = signChangeset({ referenceId, changes: offer.changes });
+    const token = signChangeset({ referenceId: context.referenceId, changes });
+    console.log(`[api.sign-changeset] ${context.referenceId}: signed`);
     return cors(Response.json({ token }));
   } catch (error) {
     console.error("[api.sign-changeset] could not sign changeset:", error.message);

@@ -180,10 +180,12 @@ function OfferPage({ offer }) {
 
   return (
     <BlockStack spacing="loose">
-      <CalloutBanner title="It's not too late to add this to your order.">
-        <Text size="medium">Add the {offer.productTitle} to your order and </Text>
+      {/* Headline and description were written offline from the product's
+          verified facts and checked by our backend. */}
+      <CalloutBanner title={offer.headline}>
+        {offer.description && <Text size="medium">{offer.description} </Text>}
         <Text size="medium" emphasized>
-          save {offer.discountPercent}%.
+          Save {offer.discountPercent}%.
         </Text>
       </CalloutBanner>
 

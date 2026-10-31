@@ -38,7 +38,7 @@ Last updated: 2026-10-31.
 
 | Component | AI calls | Other cost | Grows with |
 |---|---|---|---|
-| Checkout offer decision (`findOffer`, Slice 5; wired into `/api/offer` in Slice 6) | none | hosting, 2 indexed DB reads, 1 Admin API query (top 8 candidates) | orders |
+| Checkout offer decision (`findOffer` via `/api/offer`, Slice 6) | none | hosting, 2 indexed DB reads, 1 Admin API query (top 8 candidates), 1 DB write (`OfferDecision`); a repeat ShouldRender or Accept adds 1 Admin query for the stored pick | orders |
 | Catalog sync (manual button) | none | Admin API reads (2 pages per 100 products) | catalog size |
 | Product Events | none directly | 1 Admin API read per delivery | edit volume |
 | Enrichment | 1 per changed product | — | products changed |
@@ -107,6 +107,7 @@ Method: measured the character counts of our prompts, schemas and stored AI outp
 
 | Date | What ran | AI calls | Tokens | Cost | Source |
 |---|---|---|---|---|---|
+| 2026-10-31 | Checkout decisions (Slice 6 tests, 4 checkouts) | 0 | 0 | $0 AI; engine 223-317 ms each (measured, `OfferDecision.durationMs`) | dev DB |
 | 2026-10-30 to 31 | Dev runs: 3 full enrichments, ~5 relationship rebuilds, Slice 4 tests (10 products) | ~100 (estimate) | not logged | well under $1 (estimate) | to confirm in the OpenAI usage dashboard |
 
 ## 10. Open questions
@@ -115,4 +116,3 @@ Method: measured the character counts of our prompts, schemas and stored AI outp
 - What exactly do the "30m write" / "12h write" cache prices mean for our calls?
 - Hosting and database choice and price (needed for a complete monthly figure).
 - Phase 4 analytics: event-write volume per order (DB cost only, no AI).
-- Checkout decision latency (`findOffer`: 2 DB reads + 1 Admin query): not measured yet; record from the Offer preview or the Slice 6 timing logs.

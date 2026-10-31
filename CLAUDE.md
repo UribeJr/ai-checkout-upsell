@@ -53,7 +53,9 @@ You are the implementation partner for a Senior Full Stack Shopify Engineer case
 - [x] Repository structure, package versions, app name, scopes and current files: inspected (see `master_context.md` section 3).
 - [x] Post-purchase UI extension: generated as `extensions/intelligent-offer` (React flavor) and working on the dev store.
 - [x] Full test checkout, Bogus Gateway and post-purchase offer: verified end to end with a hardcoded offer (Phase 1). Results in `docs/phase-1-test-checklist.md`.
-- [ ] Product intelligence database / AI provider integration / analytics: **not yet built**.
+- [x] Product intelligence database + offline AI enrichment and relationships (Phase 2 Slices 2-4b).
+- [x] Deterministic offer engine wired into checkout, replacing the hardcoded offer (Phase 2 Slices 5-6, coded 2026-10-31; checkout tests in `docs/phase-2-test-checklist.md`).
+- [ ] Analytics (impression / accept / decline events, dashboard): **not yet built** (Phase 4).
 
 The user plans to develop with **Claude Code in Cursor** and wants a readable JavaScript implementation. They have experience with Shopify apps, Prisma, Polaris, and Shopify Admin APIs, but this particular repository is new. Do not confuse it with any other Shopify app.
 

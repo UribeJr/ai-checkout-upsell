@@ -122,8 +122,8 @@ model OfferDecision {
   headline          String?
   description       String?
   reasoning         String?
-  source            String // AI | CACHE | FALLBACK | NONE
-  fallbackReason    String? // timeout | invalid_output | provider_error | not_configured
+  source            String // AI_COPY (stored relationship copy) | TEMPLATE | NONE (no offer)
+  fallbackReason    String? // why NONE: no_candidates | none_sellable
   modelName         String?
   promptVersion     String?
   durationMs        Int?
