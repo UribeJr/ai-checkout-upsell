@@ -41,6 +41,21 @@ const ACTIVE_PRODUCTS_QUERY = `#graphql
     }
   }`;
 
+const PRODUCT_QUERY = `#graphql
+  ${PRODUCT_FIELDS}
+  query CatalogProduct($id: ID!) {
+    product(id: $id) {
+      ...CatalogProduct
+    }
+  }`;
+
+// Returns one product (any status), or null if it no longer exists.
+export async function fetchProduct(admin, productId) {
+  const response = await admin.graphql(PRODUCT_QUERY, { variables: { id: productId } });
+  const { data } = await response.json();
+  return data.product;
+}
+
 // Returns every ACTIVE product, following pagination.
 export async function fetchActiveProducts(admin) {
   const products = [];

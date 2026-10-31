@@ -25,28 +25,31 @@ api_version = "2027-01"
 [events]
 api_version = "2026-10"
 
+  # Product intelligence stays in step with the catalog. Only content changes
+  # trigger a delivery; price and inventory edits never do (those are read live
+  # at checkout). The handler re-reads the product and its content hash
+  # decides whether AI enrichment runs.
+
   [[events.subscription]]
-  handle = "product-price-change"
+  handle = "catalog-product-created-deleted"
+  topic = "Product"
+  actions = [ "create", "delete" ]
+  uri = "/webhooks/catalog/products"
+
+  [[events.subscription]]
+  handle = "catalog-product-content-updated"
   topic = "Product"
   actions = [ "update" ]
-  triggers = [ "product.variants.price", "product.variants.compareAtPrice" ]
-  uri = "/webhooks/products/update"
-  query = """
-  query product_variant_price_change($productId: ID!, $variantsId: ID!) {
-    product(id: $productId) {
-      id
-      title
-      status
-    }
-    productVariant(id: $variantsId) {
-      id
-      title
-      price
-      compareAtPrice
-    }
-  }
-  """
-  query_filter = "product.status:'ACTIVE'"
+  triggers = [
+    "product.title",
+    "product.descriptionHtml",
+    "product.productType",
+    "product.tags",
+    "product.status",
+    "product.options.*",
+    "product.metafield(namespace: 'custom', key: 'verified_facts').value",
+  ]
+  uri = "/webhooks/catalog/products"
 
 [auth]
 redirect_urls = [ "https://example.com/api/auth" ]

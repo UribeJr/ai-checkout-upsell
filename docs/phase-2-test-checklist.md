@@ -21,7 +21,7 @@ Product Intelligence + AI offer selection on `gruns-dev-store`. Plan: `docs/phas
 | 2.3 | Price-only edit (Canvas Tote $24.99 -> $30.99) + sync | No change | ✅ | `[sync] {"created":0,"changed":0,"unchanged":10,"removed":0}` |
 | 2.4 | No price stored in snapshots | 0 snapshots contain a price | ✅ | SQLite check |
 | 2.5 | Hash unit tests | Pass | ✅ | `npm test`: 5/5 (`test/product-snapshot.test.js`) |
-| 2.6 | Archive a product + sync | Row retired, edges removed | ⏳ | Covered again in Slice 4 (Events) |
+| 2.6 | Archive a product + sync | Row retired, edges removed | ✅ | Verified through Events instead (4.3) |
 
 Observation for Slice 4: the template's price-change Events subscription still delivers on a price edit (`handle: product-price-change`). Slice 4 replaces it with content-only triggers.
 
@@ -56,3 +56,24 @@ Observation for Slice 4: the template's price-change Events subscription still d
 | 3.16 | Copy unit tests | Pass | ✅ | `npm test` 16/16 (prices, discounts, claims, length, foreign facts, bad copy keeps the edge) |
 
 Notes: descriptions are factual rather than salesy (grounding tradeoff). Some relationship types are debatable (Bundle -> Travel Packs = REFILL); ranking uses scores and only excludes UPGRADE. Canvas Tote -> Tin 0.72 / Travel Packs 0.58: a 0.6 minimum score in Slice 5 keeps only the Tin.
+
+## Slice 4: Product Events
+
+Test product: Pocket Travel Tin (`gid://shopify/Product/15478588932319`), 2026-10-31.
+
+| # | Scenario | Expected | Status | Evidence |
+|---|---|---|---|---|
+| 4.1 | New subscriptions applied by dev | No trigger-path errors | ✅ | Deliveries arrive at `/webhooks/catalog/products`; no config errors reported |
+| 4.2 | Content edit delivers and re-enriches with no manual sync | `-> changed`, then enrich + relationships | ✅ | `Product update ... -> changed`, `[enrich] Pocket Travel Tin: ok ... 2933ms`, relationships rebuilt for all 10 |
+| 4.3 | Archive | `-> retired`, outgoing + incoming edges removed | ✅ | `Product update ... -> retired` |
+| 4.4 | Reactivate | `-> changed`, re-enriched, edges back | ✅ | `-> changed`, `[queue] {"enriched":1,"failed":0,"relationshipsUpdated":10}`; SQLite: Tin has 3 outgoing and 5 incoming edges again |
+| 4.5 | Description reverted | Stored snapshot = original text | ✅ | SQLite snapshot: "A small metal tin with a hinged lid that holds a few days of gummies on the go." |
+| 4.6 | Price edit | No `[events]` line, no AI call | ✅ | Developer-verified 2026-10-31: price edited, no event logged (inventory edit not tested separately; not in the triggers either) |
+| 4.7 | Edit while a run is in progress | Second run picks up the new edit | ⏳ | Fix coded after the run (see findings); not tested live |
+
+**Findings:**
+- **Missed edits during a run (fixed, 📝):** a run reads its work list once, and a second `startQueue` during the run was skipped. A product edited mid-run stayed PENDING until something else started a run. Worse, if the edit landed during that product's own AI call, the old profile was saved as ENRICHED and the new content was never enriched. Fix in `enrichment-queue.server.js`: a skipped start now schedules one more run, and the profile is saved only if `sourceHash` still matches the content that was enriched (else `requeued`).
+- **Cost per edit:** one content change = 1 enrichment + 10 relationship calls (~85-100 s, sequential), because every product's edges are rebuilt. Fine for 10 products; at catalog scale rebuild only the changed product's outgoing edges plus the products whose edges point at it.
+- **Relationship latency went up with copy:** 4.6-15.1 s per call (v2 without copy: 2.4-5.4 s). Offline only, so no checkout impact.
+- **Run-to-run variability:** with no relevant changes, edge counts moved (Pouch 4 -> 5, Travel Packs 3 -> 4, Bundle 3 -> 5). The Slice 5 minimum score makes offers depend less on this churn.
+- Copy: 31 edges, 29 with AI copy; 2 rejected by the validator (those edges use template copy at checkout).

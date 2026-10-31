@@ -16,6 +16,10 @@ const MAX_ATTEMPTS = 3;
 // Shops with a run in progress (in-process lock: one runner per shop).
 const runningShops = new Set();
 
+// Shops that got new work while a run was in progress. The running run
+// already read its work list, so it starts one more run when it finishes.
+const rerunRequested = new Set();
+
 export function isQueueRunning(shop) {
   return runningShops.has(shop);
 }
@@ -42,15 +46,17 @@ export async function reEnrichAll(shop) {
  * product's best offers).
  */
 export async function processQueue({ shop }) {
-  if (runningShops.has(shop)) return { skipped: true };
+  if (runningShops.has(shop)) {
+    rerunRequested.add(shop);
+    return { skipped: true };
+  }
   runningShops.add(shop);
 
   try {
-    const summary = { enriched: 0, failed: 0, relationshipsUpdated: 0 };
+    const summary = { enriched: 0, failed: 0, requeued: 0, relationshipsUpdated: 0 };
 
     for (const row of await findDueProducts(shop)) {
-      const ok = await enrichOne(row);
-      summary[ok ? "enriched" : "failed"]++;
+      summary[await enrichOne(row)]++;
     }
 
     if (summary.enriched > 0 || (await relationshipsOutdated(shop))) {
@@ -61,6 +67,7 @@ export async function processQueue({ shop }) {
     return summary;
   } finally {
     runningShops.delete(shop);
+    if (rerunRequested.delete(shop)) startQueue(shop);
   }
 }
 
@@ -80,7 +87,8 @@ function findDueProducts(shop) {
   });
 }
 
-// Returns true on success. On failure the previous profile is kept as is.
+// Returns "enriched", "failed" or "requeued". On failure the previous
+// profile is kept as is.
 async function enrichOne(row) {
   await prisma.productIntelligence.update({
     where: { id: row.id },
@@ -90,8 +98,11 @@ async function enrichOne(row) {
   try {
     const { profile, modelName, durationMs, warnings } = await enrichProduct(row);
 
-    await prisma.productIntelligence.update({
-      where: { id: row.id },
+    // Save only if the product still has the content we enriched. If an event
+    // changed it during the AI call, the sync already set it back to PENDING
+    // and the next run enriches the new content.
+    const { count } = await prisma.productIntelligence.updateMany({
+      where: { id: row.id, sourceHash: row.sourceHash },
       data: {
         category: profile.category,
         format: profile.format,
@@ -110,10 +121,15 @@ async function enrichOne(row) {
       },
     });
 
+    if (count === 0) {
+      console.log(`[enrich] ${row.title}: changed during enrichment, queued again`);
+      return "requeued";
+    }
+
     console.log(
       `[enrich] ${row.title}: ok model=${modelName} version=${ENRICHMENT_PROMPT_VERSION} ${durationMs}ms warnings=${warnings.length}`,
     );
-    return true;
+    return "enriched";
   } catch (error) {
     const attempts = row.attempts + 1;
     // Retry after 1, 2, 4 ... minutes; stop after MAX_ATTEMPTS.
@@ -131,7 +147,7 @@ async function enrichOne(row) {
     });
 
     console.error(`[enrich] ${row.title}: failed (attempt ${attempts}): ${error.message}`);
-    return false;
+    return "failed";
   }
 }
 
