@@ -1,6 +1,7 @@
 import { fetchProduct } from "./shopify-catalog.server";
 import { retireProducts, upsertProductSnapshot } from "./product-sync.server";
 import { startQueue } from "./enrichment-queue.server";
+import { getSettings } from "../settings.server";
 
 /**
  * Keeps product intelligence current from Shopify Product Events, so a
@@ -11,6 +12,9 @@ import { startQueue } from "./enrichment-queue.server";
  * or inventory. On top of that, the content hash decides whether the AI needs
  * to run at all.
  */
+
+// With automatic AI updates off (Settings page), changes are still recorded
+// and retirements still happen; only the AI run waits for a manual start.
 
 // Shopify delivers at least once, so the same delivery can arrive twice.
 // Remembering successfully handled delivery IDs makes duplicates a no-op.
@@ -54,6 +58,12 @@ export async function handleProductEvent({ shop, admin, action, productId }) {
   if (!product || product.status !== "ACTIVE") return retire();
 
   const result = await upsertProductSnapshot({ shop, product });
-  if (result !== "unchanged") startQueue(shop);
+  if (result !== "unchanged") {
+    if ((await getSettings(shop)).autoEnrich) {
+      startQueue(shop);
+    } else {
+      console.log(`[events] ${shop}: automatic AI updates are off; ${productId} waits for a manual run`);
+    }
+  }
   return result;
 }

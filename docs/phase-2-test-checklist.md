@@ -77,3 +77,15 @@ Test product: Pocket Travel Tin (`gid://shopify/Product/15478588932319`), 2026-1
 - **Relationship latency went up with copy:** 4.6-15.1 s per call (v2 without copy: 2.4-5.4 s). Offline only, so no checkout impact.
 - **Run-to-run variability:** with no relevant changes, edge counts moved (Pouch 4 -> 5, Travel Packs 3 -> 4, Bundle 3 -> 5). The Slice 5 minimum score makes offers depend less on this churn.
 - Copy: 31 edges, 29 with AI copy; 2 rejected by the validator (those edges use template copy at checkout).
+
+## Slice 4b: Settings page, manual AI mode
+
+| # | Scenario | Expected | Status | Evidence |
+|---|---|---|---|---|
+| 4b.1 | Settings page loads (after dev restart) | Automatic AI updates: On; 0 waiting | ✅ | Developer-verified 2026-10-31 |
+| 4b.2 | Turn off, edit a product description | `[events] ... -> changed` + `automatic AI updates are off ... waits for a manual run`; no `[enrich]`; page shows 1 waiting | ✅ | Developer-verified 2026-10-31 |
+| 4b.3 | Archive a product while off | `-> retired` immediately (retirement doesn't wait) | ✅ | Developer-verified 2026-10-31 |
+| 4b.4 | Run AI update | One run enriches all waiting products + one rebuild; count back to 0 | ✅ | Developer-verified 2026-10-31 |
+| 4b.5 | Turn back on with changes waiting | Catch-up run starts | ✅ | Developer-verified 2026-10-31 |
+| 4b.6 | Lint + unit tests | Clean | ✅ | `npx eslint app/` clean; `npm test` 16/16 |
+| 4b.7 | Edit then undo before a run (auto off) | Undo -> `-> unchanged`, waiting count back to 0, next run has nothing to enrich | ✅ | Developer-verified live 2026-10-31. DB-level check also passed (throwaway shop, rows deleted): create -> PENDING, edit -> PENDING, re-save edit -> PENDING, undo -> ENRICHED, reactivate -> PENDING |

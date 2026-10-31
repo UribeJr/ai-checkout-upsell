@@ -133,3 +133,10 @@ model OfferDecision {
   @@unique([shop, referenceId])
   @@index([shop, basketKey, createdAt])
 }
+
+// Per-shop app settings. A shop without a row uses the defaults.
+model ShopSettings {
+  shop       String   @id
+  autoEnrich Boolean  @default(true) // false = product changes wait for a manual AI run
+  updatedAt  DateTime @updatedAt
+}

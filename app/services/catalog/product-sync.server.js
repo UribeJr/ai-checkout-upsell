@@ -34,7 +34,8 @@ export async function syncCatalog({ shop, admin }) {
 
 /**
  * Saves the latest snapshot of one product.
- * Returns "created", "changed" or "unchanged".
+ * Returns "created", "changed" (needs enrichment) or "unchanged" (nothing
+ * for the AI to do).
  */
 export async function upsertProductSnapshot({ shop, product, now = new Date() }) {
   const snapshot = buildSnapshot(product);
@@ -63,17 +64,30 @@ export async function upsertProductSnapshot({ shop, product, now = new Date() })
 
   // A product coming back after being retired lost its relationships, so it
   // needs enrichment again even if its content is the same.
-  const needsEnrichment =
-    existing.sourceHash !== sourceHash || existing.deletedAt !== null;
+  const wasRetired = existing.deletedAt !== null;
+
+  if (existing.sourceHash === sourceHash && !wasRetired) {
+    await prisma.productIntelligence.update({ where: { id: existing.id }, data: fields });
+    return "unchanged";
+  }
+
+  // Compare with what the AI last enriched, not only the last stored version:
+  // an edit that is undone before the next run puts the product back to
+  // ENRICHED, so the run has nothing to redo. (An in-flight AI call for the
+  // undone edit is discarded by the queue's sourceHash check.)
+  if (existing.enrichedHash === sourceHash && !wasRetired) {
+    await prisma.productIntelligence.update({
+      where: { id: existing.id },
+      data: { ...fields, enrichmentStatus: "ENRICHED", attempts: 0, nextAttemptAt: null, lastError: null },
+    });
+    return "unchanged";
+  }
 
   await prisma.productIntelligence.update({
     where: { id: existing.id },
-    data: needsEnrichment
-      ? { ...fields, enrichmentStatus: "PENDING", attempts: 0, nextAttemptAt: null, lastError: null }
-      : fields,
+    data: { ...fields, enrichmentStatus: "PENDING", attempts: 0, nextAttemptAt: null, lastError: null },
   });
-
-  return needsEnrichment ? "changed" : "unchanged";
+  return "changed";
 }
 
 /**
