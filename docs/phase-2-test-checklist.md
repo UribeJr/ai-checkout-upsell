@@ -89,3 +89,24 @@ Test product: Pocket Travel Tin (`gid://shopify/Product/15478588932319`), 2026-1
 | 4b.5 | Turn back on with changes waiting | Catch-up run starts | ✅ | Developer-verified 2026-10-31 |
 | 4b.6 | Lint + unit tests | Clean | ✅ | `npx eslint app/` clean; `npm test` 16/16 |
 | 4b.7 | Edit then undo before a run (auto off) | Undo -> `-> unchanged`, waiting count back to 0, next run has nothing to enrich | ✅ | Developer-verified live 2026-10-31. DB-level check also passed (throwaway shop, rows deleted): create -> PENDING, edit -> PENDING, re-save edit -> PENDING, undo -> ENRICHED, reactivate -> PENDING |
+
+## Slice 5: candidate engine, ranking, offer preview
+
+No AI at checkout. Rules: `app/services/offers/candidate-ranking.js`; data loading + live check: `candidate-engine.server.js`; page: Offer preview.
+
+| # | Scenario | Expected | Status | Evidence |
+|---|---|---|---|---|
+| 5.1 | Ranking + picking unit tests | Pass | ✅ | `npm test` 29/29 (13 new: UPGRADE/purchased/below-min skips, multi-item dedupe + boost, stable ties, out of stock / inactive / deleted fall-through, purchased variant, price cap, stale-fact -> TEMPLATE, null headline -> TEMPLATE, empty, headline length) |
+| 5.2 | Live Admin query (`nodes(ids:)` + `shop.currencyCode`) | Works with `read_products` | ✅ | Run read-only via `shopify store execute` on gruns-dev-store 2026-10-31. Demo products have no images (`featuredMedia: null`) |
+| 5.3 | Pouch | Jar or Travel Packs, AI copy | ✅ | Engine check (CLI-backed admin, real DB): Glass Storage Jar 0.92, AI copy. Travel Packs edge is 0.50 this run -> below min |
+| 5.4 | Powder | Shaker | ✅ | Stainless Shaker Bottle 0.92, AI copy |
+| 5.5 | Pouch + Powder | One deduped list | ✅ | 4 candidates, Shaker offered (tie with Jar at 0.92 broken by product ID). No shared target in this data, so no boost shown; Pouch + Starter Bundle share the Tin |
+| 5.6 | Starter Bundle | Not Pouch or Jar | ✅ | Travel Packs 0.88 offered; Pouch/Jar not candidates |
+| 5.7 | Travel Packs | UPGRADE Pouch skipped, Tin offered | ✅ | Pouch UPGRADE 0.88 skipped, Tin 0.67 offered |
+| 5.8 | Canvas Tote | Only ≥ 0.6, or none | ✅ | Travel Packs 0.66 offered; 3 weaker skipped |
+| 5.9 | Preview page in Admin | Same results, decision time shown | ✅ | Developer confirmed the Offer preview page works and approved Slice 5, 2026-10-31 |
+| 5.10 | Stale-fact guard live | Remove a cited fact -> Template copy; restore -> AI copy | ⏳ | Unit-tested (5.1); live result not reported separately |
+| 5.11 | Out of stock live | Top candidate unavailable -> next one offered | ⏳ | Unit-tested (5.1); live result not reported separately |
+| 5.12 | Decision latency | Recorded from the preview | ⏳ | Not recorded yet; will be measured from Slice 6 timing logs if not read from the preview |
+
+Rows 5.3-5.8 used a temporary script that ran `findOffer` with an admin client backed by `shopify store execute` (deleted after use). The preview page runs the same function through the app.

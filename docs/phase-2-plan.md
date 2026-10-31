@@ -14,6 +14,8 @@
 
 Sections 2, 6, 7, 8 and 10-11 below are superseded where they mention live AI selection at checkout.
 
+**Slice 5 as built (2026-10-31):** deterministic engine in `app/services/offers/` (`candidate-ranking.js`, `candidate-engine.server.js`), price cap `OFFER_MAX_ORDER_RATIO` (default 1), stale-fact guard on stored copy, and an Offer preview page. No `offer-selection.server.js`, no checkout AI cache.
+
 
 ## Context
 
