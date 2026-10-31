@@ -210,6 +210,10 @@ CLI access: `shopify store auth --store gruns-dev-store.myshopify.com --scopes r
 - The post-purchase page not appearing is often store config (gateway, wallet payment, app not selected as post-purchase app), not a code bug.
 - Tunnel URL must be updated in the extension config each dev run. A stable `--tunnel-url` would remove this step later.
 - CLI 4.x template file names may differ from the tutorial's `src/index.jsx`. Check what is generated before editing.
+- **Ranking follow-ups (future work, developer chose not to fix now, 2026-10-31):**
+  - Multi-item bonus has no ceiling (`MULTI_SOURCE_BONUS` 0.05 per extra source in `candidate-ranking.js`). In a 10-item cart a 0.60 match pointed at by 9 items scores 1.00 and beats a single 0.92 match. Fix: cap the total bonus, e.g. `MULTI_SOURCE_BONUS_MAX = 0.15` + `Math.min`, with a 10-item unit test. 0.15 is a suggestion; tune with Phase 4 accept data. Carts of 2-4 items are unaffected.
+  - Bundle redundancy: another item's relationship can offer what a bundle in the cart already contains (order #1014: Starter Bundle buyer accepted a Glass Jar). Fix: a basket-wide "included" exclusion.
+  - Only the top 8 candidates are checked live; if all 8 fail there is no offer. Fix: check the next batch.
 - Fallback if Shopify APIs block a real demo: a standalone order-simulation page (allowed by the brief), only after documenting the investigation here.
 
 ## 7. Phase 1 plan summary

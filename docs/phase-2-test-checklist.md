@@ -129,6 +129,6 @@ Rows 5.3-5.8 used a temporary script that ran `findOffer` with an admin client b
 **Finding (6.5):** Pouch + Starter Bundle offers the Glass Jar (0.92 from the Pouch), but the Starter Bundle already includes a jar. The Starter Bundle -> Jar relationship is rightly absent, but nothing stops another purchased product's relationship from offering what the bundle contains. Possible fix for a later slice: treat "bundle contains X" as an exclusion for the whole basket (a relationship type such as `INCLUDED`, or a verified fact). Not changed in Slice 6.
 
 **Findings (large carts, from review):**
-- The multi-item bonus has no ceiling: in a 10-item cart, a 0.60 target pointed at by 9 items scores 1.00 and beats a 0.92 single match. Fix: cap the total bonus (e.g. +0.15). Not changed yet.
+- The multi-item bonus has no ceiling: in a 10-item cart, a 0.60 target pointed at by 9 items scores 1.00 and beats a 0.92 single match. Fix: cap the total bonus (e.g. +0.15). Developer decision 2026-10-31: leave as documented future work.
 - Only the top 8 are checked live; if all 8 fail, there is no offer even if number 9 is sellable. Fix: check the next batch. Rare with this catalog.
 - Turning inventory tracking on/off caused no AI work (all products stayed ENRICHED).
