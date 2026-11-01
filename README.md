@@ -77,7 +77,7 @@ Then:
 | Page | Read it to |
 |---|---|
 | [docs/setup.md](docs/setup.md) | Install, connect your store, seed the demo catalog and run a test checkout |
-| [docs/architecture.md](docs/architecture.md) | Understand both pipelines, the checkout rules, the data model and each design decision |
+| [docs/architecture.md](docs/architecture.md) | Understand both pipelines, the checkout rules, the data model, each design decision and the production path |
 | [docs/analytics.md](docs/analytics.md) | See what the Analytics page measures and how each number is defined |
 | [cost.md](cost.md) | See AI and hosting cost by catalog size, measured or estimated |
 | `docs/phase-*-test-checklist.md` | Check test evidence for each phase, including real test orders |
@@ -99,7 +99,7 @@ End-to-end results come from real test orders on the development store: #1012-#1
 - It runs under `shopify app dev`. A demo without the dev server needs a hosted backend and a real app URL.
 - Post-purchase extensions are in beta and need extra access for production, and some payment methods get no post-purchase page.
 
-The details are in [docs/architecture.md](docs/architecture.md#limitations-and-future-work).
+The details are in [docs/architecture.md](docs/architecture.md#limitations-and-future-work), and what it would take to run this for real merchants is in [Production path](docs/architecture.md#production-path).
 
 ## Repo map
 

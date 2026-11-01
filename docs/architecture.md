@@ -173,3 +173,45 @@ The full schema is in [`prisma/schema.prisma`](../prisma/schema.prisma). JSON fi
 - **Dev setup:** the tunnel URL must be copied into the extension config on every dev run. The deployed app config still has the scaffold's placeholder `application_url`, so a hosted backend is needed before a demo outside `shopify app dev`.
 - **Shopify platform limits:** post-purchase extensions are in beta and need extra access for production. There is no post-purchase page for some payment methods and order types. Third-party pixels see only the initial purchase.
 - **Queue:** the background job queue is in-process, with one runner per shop and retries. Production would use a real job queue and a hosted database.
+
+## Production path
+
+None of this is built. These are the changes that would turn the case study into an app real merchants could install, ordered by what blocks a launch first. The design doesn't need to change: the same background pipeline and checkout decision run on sturdier infrastructure, with better data feeding back in.
+
+### 1. Run it for real
+
+| Area | Today | In production |
+|---|---|---|
+| Backend | Runs under `shopify app dev`, through a tunnel that changes on every run | A hosted backend with a fixed URL in `shopify.app.toml` and the extension's `APP_URL` |
+| Database | SQLite file | Postgres. JSON fields are already stored as strings, so the schema moves over as is |
+| Background jobs | In-process queue, one runner per shop (`enrichment-queue.server.js`) | A real job queue (for example SQS or BullMQ) running the same steps per job |
+| Event deduplication | Handled delivery IDs kept in memory | Stored, so duplicates are caught across restarts and instances |
+| Post-purchase access | Works on development stores | Shopify must grant post-purchase extension access before live stores can use it |
+
+### 2. Trustworthy numbers
+
+- **Refund-adjusted revenue.** Subtract refunds and cancellations using order webhooks. That needs the `read_orders` scope, and order data falls under Shopify's protected customer data requirements.
+- **Proven lift.** Hold out a share of checkouts that never see an offer, and compare them with the rest. Today's revenue is attributed, not proven incremental.
+- **Analytics at scale.** Aggregate in SQL by date range. Today the page reads the last 500 decisions with no date filter.
+- **Real AI cost.** Log the token usage of every AI call instead of estimating it ([cost.md](../cost.md)).
+
+### 3. Better offers over time
+
+- **Ship the three ranking fixes:**
+  - a ceiling on the multi-item bonus
+  - no offers for products a bundle in the cart already contains
+  - checking past the top 8 when they all fail
+- **Learn from outcomes.** Blend each relationship's AI score with its observed accept rate and revenue per offer shown. Guard against small samples, then move to controlled experiments or a contextual bandit. Nothing learns from outcomes today.
+
+### 4. Cost at catalog scale
+
+The relationship rebuild is the cost that grows with catalog size², about $10 per run at 1,000 products (estimate). The levers, with estimates from [cost.md](../cost.md):
+
+| Lever | Effect (estimate) |
+|---|---|
+| Rebuild only the changed product and the products that point at it | A 1,000-product edit: $10.25 to about $0.06 |
+| Send the AI a shortlist of about 20 likely matches, not the whole catalog | About $0.003 per edit at any catalog size |
+| Prompt caching for the shared catalog part of each call | Up to about 90% off rebuild input |
+| Batch API for nightly full rebuilds | About 50% off |
+
+Checkout cost doesn't change at any scale: it makes no AI call.
