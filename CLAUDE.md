@@ -55,7 +55,7 @@ You are the implementation partner for a Senior Full Stack Shopify Engineer case
 - [x] Full test checkout, Bogus Gateway and post-purchase offer: verified end to end with a hardcoded offer (Phase 1). Results in `docs/phase-1-test-checklist.md`.
 - [x] Product intelligence database + offline AI enrichment and relationships (Phase 2 Slices 2-4b).
 - [x] Deterministic offer engine wired into checkout, replacing the hardcoded offer (Phase 2 Slices 5-6, coded 2026-10-31; checkout tests in `docs/phase-2-test-checklist.md`).
-- [ ] Analytics (impression / accept / decline events, dashboard): **not yet built** (Phase 4).
+- [x] Analytics (impression / accept / decline / applied events, Analytics page): verified 2026-10-31 (Phase 4, `docs/phase-4-test-checklist.md`).
 
 The user plans to develop with **Claude Code in Cursor** and wants a readable JavaScript implementation. They have experience with Shopify apps, Prisma, Polaris, and Shopify Admin APIs, but this particular repository is new. Do not confuse it with any other Shopify app.
 

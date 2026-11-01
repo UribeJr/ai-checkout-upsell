@@ -2,6 +2,7 @@ import { authenticate, unauthenticated } from "../shopify.server";
 import { getPostPurchaseContext } from "../services/post-purchase-auth.server";
 import { getOfferToSign } from "../services/offers/offer-decision.server";
 import { signChangeset } from "../services/changeset.server";
+import { recordEvent } from "../services/analytics/offer-events.server";
 
 // The checkout sends a CORS preflight (OPTIONS) before the POST.
 // authenticate.public.checkout answers it for us; any other GET is rejected.
@@ -34,7 +35,7 @@ export const action = async ({ request }) => {
 
   try {
     const { admin } = await unauthenticated.admin(context.shop);
-    const { changes, reason } = await getOfferToSign({
+    const { decision, changes, reason } = await getOfferToSign({
       shop: context.shop,
       admin,
       context,
@@ -43,6 +44,8 @@ export const action = async ({ request }) => {
 
     if (!changes) {
       console.warn(`[api.sign-changeset] ${context.referenceId}: not signed (${reason})`);
+      // The buyer pressed Pay now but the offer can't be sold any more.
+      if (decision) await recordEvent({ decision, type: "APPLY_FAILED", reason });
       return cors(
         Response.json({ error: "Offer is no longer available" }, { status: 409 }),
       );
@@ -50,6 +53,8 @@ export const action = async ({ request }) => {
 
     const token = signChangeset({ referenceId: context.referenceId, changes });
     console.log(`[api.sign-changeset] ${context.referenceId}: signed`);
+    // Recorded here, not by the extension: acceptance is what we signed.
+    await recordEvent({ decision, type: "ACCEPTED" });
     return cors(Response.json({ token }));
   } catch (error) {
     console.error("[api.sign-changeset] could not sign changeset:", error.message);

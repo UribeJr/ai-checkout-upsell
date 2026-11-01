@@ -38,6 +38,7 @@ Last updated: 2026-10-31.
 
 | Component | AI calls | Other cost | Grows with |
 |---|---|---|---|
+| Offer events (`/api/offer-events`, Phase 4) | none | hosting, 1-2 indexed DB reads + 1 DB write per event (at most 5 events per checkout) | orders |
 | Checkout offer decision (`findOffer` via `/api/offer`, Slice 6) | none | hosting, 2 indexed DB reads, 1 Admin API query (top 8 candidates), 1 DB write (`OfferDecision`); a repeat ShouldRender or Accept adds 1 Admin query for the stored pick | orders |
 | Catalog sync (manual button) | none | Admin API reads (2 pages per 100 products) | catalog size |
 | Product Events | none directly | 1 Admin API read per delivery | edit volume |

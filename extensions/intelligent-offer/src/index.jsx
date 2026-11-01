@@ -33,15 +33,14 @@ import { APP_URL } from "./config";
 // How long we wait for our backend before giving up. Our own choice to keep
 // checkout fast (Shopify doesn't publish a limit); on timeout we skip the offer.
 const BACKEND_TIMEOUT_MS = 4000;
+// Measurement calls get less time: they must never hold the buyer up.
+const EVENT_TIMEOUT_MS = 1500;
 
-function withTimeout(promise) {
+function withTimeout(promise, ms = BACKEND_TIMEOUT_MS) {
   return Promise.race([
     promise,
     new Promise((_, reject) =>
-      setTimeout(
-        () => reject(new Error(`timed out after ${BACKEND_TIMEOUT_MS}ms`)),
-        BACKEND_TIMEOUT_MS,
-      ),
+      setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms),
     ),
   ]);
 }
@@ -109,6 +108,31 @@ async function fetchSignedChangeset(inputData, offerId) {
   }
 }
 
+// Records what happened to the offer (IMPRESSION, DECLINED, APPLIED,
+// APPLY_FAILED) for the analytics page. Failures are logged and ignored.
+async function sendEvent(inputData, offerId, type, extra = {}) {
+  try {
+    await withTimeout(
+      fetch(`${APP_URL}/api/offer-events`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${inputData.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          referenceId: inputData.initialPurchase.referenceId,
+          offerId,
+          type,
+          ...extra,
+        }),
+      }),
+      EVENT_TIMEOUT_MS,
+    );
+  } catch (error) {
+    console.error(`[intelligent-offer] could not record ${type}`, error);
+  }
+}
+
 render("Checkout::PostPurchase::Render", () => <App />);
 
 export function App() {
@@ -146,6 +170,12 @@ function OfferPage({ offer }) {
     calculatePurchase();
   }, [calculateChangeset, offer.changes]);
 
+  // An impression is the offer shown with Shopify's prices, not the preload.
+  // The server counts it once per checkout even if this runs again.
+  useEffect(() => {
+    if (calculatedPurchase) sendEvent(inputData, offer.id, "IMPRESSION");
+  }, [calculatedPurchase, inputData, offer.id]);
+
   if (calculationFailed) return <ContinueToOrderStatus onContinue={done} />;
 
   async function acceptOffer() {
@@ -153,11 +183,22 @@ function OfferPage({ offer }) {
 
     // Our backend signs the changeset with the app secret, then Shopify
     // applies it to the order and charges the buyer the difference.
+    // If signing is refused, the server records APPLY_FAILED itself.
     const token = await fetchSignedChangeset(inputData, offer.id);
     if (token) {
       const result = await applyChangeset(token);
-      if (result.status !== "processed") {
+      if (result.status === "processed") {
+        // Revenue = the added line after discount, in shop currency, as
+        // Shopify calculated it. The server checks it against the offer price.
+        const addedLine = calculatedPurchase.updatedLineItems[0];
+        await sendEvent(inputData, offer.id, "APPLIED", {
+          value: addedLine.totalPriceSet.shopMoney.amount,
+        });
+      } else {
         console.error("[intelligent-offer] applyChangeset failed", result.errors);
+        await sendEvent(inputData, offer.id, "APPLY_FAILED", {
+          reason: result.errors?.[0]?.code,
+        });
       }
     }
 
@@ -165,8 +206,9 @@ function OfferPage({ offer }) {
     done();
   }
 
-  function declineOffer() {
+  async function declineOffer() {
     setSubmitting(true);
+    await sendEvent(inputData, offer.id, "DECLINED");
     done();
   }
 

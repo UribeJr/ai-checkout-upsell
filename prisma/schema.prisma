@@ -128,13 +128,32 @@ model OfferDecision {
   promptVersion     String?
   durationMs        Int?
   discountPercent   Int
+  offerPrice        Float? // offered variant's list price at decision time (cap for APPLIED values)
   createdAt         DateTime @default(now())
+
+  events OfferEvent[]
 
   @@unique([shop, referenceId])
   @@index([shop, basketKey, createdAt])
 }
 
 // Per-shop app settings. A shop without a row uses the defaults.
+model OfferEvent {
+  id           String   @id @default(cuid())
+  shop         String
+  decisionId   String
+  type         String // IMPRESSION | DECLINED | ACCEPTED | APPLIED | APPLY_FAILED
+  value        Float? // APPLIED only: added line total after discount, shop currency
+  currencyCode String?
+  reason       String? // APPLY_FAILED: why; APPLIED: value_rejected when the value failed the check
+  createdAt    DateTime @default(now())
+
+  decision OfferDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@unique([decisionId, type])
+  @@index([shop, type, createdAt])
+}
+
 model ShopSettings {
   shop       String   @id
   autoEnrich Boolean  @default(true) // false = product changes wait for a manual AI run

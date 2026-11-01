@@ -57,22 +57,23 @@ export async function getCheckoutOffer({ shop, admin, context }) {
 }
 
 /**
- * Returns { changes } for the stored pick when it matches `offerId` and can
- * still be sold, otherwise { reason }.
+ * Returns { decision, changes } for the stored pick when it matches `offerId`
+ * and can still be sold, otherwise { decision, reason } (decision is null
+ * when nothing matches).
  */
 export async function getOfferToSign({ shop, admin, context, offerId }) {
   const decision = await findDecision(shop, context.referenceId);
   if (!decision || decision.id !== offerId || !decision.selectedVariantId) {
-    return { reason: "no_matching_offer" };
+    return { decision: null, reason: "no_matching_offer" };
   }
 
   const { reason } = await recheckPick({ admin, context, decision });
-  if (reason) return { reason };
+  if (reason) return { decision, reason };
 
-  return { changes: buildChanges(decision.selectedVariantId, decision.discountPercent) };
+  return { decision, changes: buildChanges(decision.selectedVariantId, decision.discountPercent) };
 }
 
-function findDecision(shop, referenceId) {
+export function findDecision(shop, referenceId) {
   return prisma.offerDecision.findUnique({
     where: { shop_referenceId: { shop, referenceId } },
   });
@@ -145,6 +146,7 @@ async function saveDecision({ shop, context, variantIds, result }) {
         promptVersion: chosen?.relationship.version ?? null,
         durationMs: result.durationMs,
         discountPercent: policy.discountPercent,
+        offerPrice: offer?.price ?? null,
       },
     });
   } catch (error) {

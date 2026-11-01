@@ -4,7 +4,7 @@ A Shopify app that shows one relevant cross-sell offer after checkout, on the po
 
 This is a job-interview case study built on a Shopify development store with fictional demo products. It is not an official Grüns storefront or a production deployment.
 
-> **Living document.** This README is updated as the project moves forward. Analytics (Phase 4) is not built yet, and the README will be revisited after it is.
+> **Living document.** This README is updated as the project moves forward. Still open: how a reviewer recreates the demo catalog.
 
 ## Status
 
@@ -13,7 +13,7 @@ This is a job-interview case study built on a Shopify development store with fic
 | 1 | Post-purchase extension, signed changeset, hardcoded offer | Done, verified with Bogus Gateway orders (`docs/phase-1-test-checklist.md`) |
 | 2 | Catalog sync, AI enrichment and relationships with offer copy, Events, Settings, offer engine, checkout wiring | Done, verified with real test orders #1012-#1016 (`docs/phase-2-test-checklist.md`) |
 | 3 | AI selection at checkout | Replaced by the Phase 2 design: copy is written offline and checkout is deterministic (see "Key decisions") |
-| 4 | Impression / accept / decline events and an analytics page | **Not built yet** |
+| 4 | Offer events (shown, accepted, declined, applied) and an Analytics page | Done, verified with real test orders #1017-#1019 (`docs/phase-4-test-checklist.md`) |
 
 ## How it works
 
@@ -38,8 +38,11 @@ CHECKOUT (no AI call)
       otherwise plain template copy
    -> saved as one OfferDecision per checkout
  Render -> Shopify calculateChangeset (all prices, discount, shipping, tax)
+   -> IMPRESSION event
  Pay now -> POST /api/sign-changeset -> live recheck of the saved pick
-   -> server-built changes signed with the app secret -> applyChangeset
+   -> server-built changes signed with the app secret (ACCEPTED event)
+   -> applyChangeset -> APPLIED event with the added amount, or APPLY_FAILED
+ Decline -> DECLINED event -> thank-you page
 ```
 
 The principle is that **AI recommends offline, the backend validates, and Shopify calculates and applies.** The model never decides prices, discounts, stock or what gets charged.
@@ -113,11 +116,25 @@ A normal storefront checkout skips the post-purchase page while `shopify app dev
 - **Product intelligence:** sync status, AI profiles and relationships for each product, plus the queue controls.
 - **Offer preview:** build a basket and see the offer checkout would choose, every candidate and why each one wasn't chosen. It runs the same decision code as checkout and makes no writes.
 - **Settings:** automatic vs. manual AI updates, waiting and failed counts, and a manual **Run AI update** button.
+- **Analytics:** offers shown, conversion, attributed revenue, revenue per offer shown, top offers (with a low-sample warning) and recent checkouts with their events.
+
+## Analytics definitions
+
+| Metric | Definition |
+|---|---|
+| Offer shown | The offer page appeared with Shopify-calculated prices (not the ShouldRender preload) |
+| Accepted | The buyer pressed Pay now and the server signed the change |
+| Applied | Shopify applied the change to the order. Only this counts as revenue |
+| Conversion | Applied offers / offers shown |
+| Attributed revenue | Added items after discount, before shipping and tax, in shop currency |
+| Top offers | Ranked by revenue per offer shown; "low sample" below 30 offers shown (our threshold) |
+
+Events are idempotent (one per type per checkout) and tied to the checkout's stored decision through the verified token. The applied amount comes from Shopify's calculation in the buyer's browser, so the server accepts it only if it is between 0 and the offer's list price.
 
 ## Testing
 
 ```sh
-npm test     # node --test, 38 unit tests, no network or database
+npm test     # node --test, 49 unit tests, no network or database
 npm run lint
 ```
 
@@ -128,21 +145,22 @@ The unit tests cover:
 - token parsing
 - changeset building
 - the stored-pick recheck
+- the offer event rules and analytics math
 
-Manual and end-to-end results, with evidence, are in `docs/phase-1-test-checklist.md` and `docs/phase-2-test-checklist.md`. That includes real test orders #1012-#1016: accept, decline, a multi-item cart, out-of-stock fallback, and an offer refused after it sold out.
+Manual and end-to-end results, with evidence, are in `docs/phase-1-test-checklist.md`, `docs/phase-2-test-checklist.md` and `docs/phase-4-test-checklist.md`. That includes real test orders #1012-#1016: accept, decline, a multi-item cart, out-of-stock fallback, and an offer refused after it sold out.
 
 ## Cost and scaling
 
 The full running model is in [`cost.md`](cost.md). The numbers there are labeled as measured or estimated.
 
-- **Checkout:** $0 in AI. Each new decision makes three indexed database reads, one Admin API query and one database write.
+- **Checkout:** $0 in AI. Each new decision makes three indexed database reads, one Admin API query and one database write; each offer event adds one small database write.
 - **Background:** all AI cost comes from enrichment and the relationship rebuild. A full rebuild sends the whole catalog with each product, so cost grows with the square of catalog size: about $0.004 per run at 10 products and about $10 at 1,000 (estimates).
 - **Controls in place:** content-only triggers, the content hash, edit-then-undo detection, and manual mode.
 - **Next levers (not built):** incremental rebuilds and a candidate shortlist. Together they would take a 1,000-product edit from about $10 to about $0.003 (estimate). Prompt caching and the Batch API would cut the cost further.
 
 ## Limitations and future work
 
-- **Analytics (Phase 4, not built):** recording impressions and accept/decline outcomes, applied revenue, and a dashboard for conversion, incremental revenue and top offers.
+- **Revenue is attributed, not proven incremental.** Proving lift needs a holdout group that is never shown an offer. Refunds and cancellations are not subtracted; production would adjust revenue from order webhooks (needs `read_orders`). Analytics reads up to the last 500 decisions with no date filter.
 - **Learning from outcomes is not built.** Logged outcomes don't change rankings yet. The plan is to blend relationship scores with observed accept rates and revenue per impression, with sample-size guards, then try experiments.
 - **Ranking follow-ups:**
   - The multi-item bonus has no ceiling, which matters in large carts. A cap of about +0.15 is planned.
@@ -159,6 +177,7 @@ app/routes/          admin pages (app.*), checkout endpoints (api.offer, api.sig
 app/services/ai/     provider adapter, OpenAI client, JSON schemas, validators
 app/services/catalog/ sync, content hash, enrichment, relationships, queue, Events handling
 app/services/offers/ ranking rules, offer engine, checkout decisions, changeset payload
+app/services/analytics/ offer events and metrics
 extensions/intelligent-offer/  post-purchase checkout extension (React)
 prisma/              schema and migrations (SQLite)
 test/                unit tests (node --test)
