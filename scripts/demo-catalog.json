@@ -1,0 +1,320 @@
+{
+  "about": "Fictional demo products for the AI post-purchase upsell case study (not real Gruns products). Exported read-only from the case study's development store on 2026-11-01. verifiedFacts go into the custom.verified_facts product metafield: the only facts the AI offer copy may use.",
+  "products": [
+    {
+      "handle": "demo-daily-greens-gummies-28-day",
+      "title": "Daily Greens Gummies, 28-Day Pouch",
+      "descriptionHtml": "<p>A 28-day supply of chewable greens gummies in a resealable pouch. Two gummies a day, no mixing needed.</p>",
+      "productType": "Gummies",
+      "vendor": "Demo Greens Co.",
+      "tags": [
+        "case-study-demo",
+        "daily",
+        "greens",
+        "gummies"
+      ],
+      "option": {
+        "name": "Flavor",
+        "values": [
+          "Original",
+          "Berry"
+        ]
+      },
+      "variants": [
+        {
+          "option": "Original",
+          "price": "49.99"
+        },
+        {
+          "option": "Berry",
+          "price": "49.99"
+        }
+      ],
+      "verifiedFacts": [
+        "56 gummies per pouch",
+        "28-day supply at 2 gummies per day",
+        "Resealable pouch",
+        "Available in Original and Berry flavors"
+      ]
+    },
+    {
+      "handle": "demo-daily-greens-gummies-travel-packs",
+      "title": "Daily Greens Gummies, 7-Day Travel Packs",
+      "descriptionHtml": "<p>Seven single-serve packets of our daily greens gummies, sized for a bag or a desk drawer.</p>",
+      "productType": "Gummies",
+      "vendor": "Demo Greens Co.",
+      "tags": [
+        "case-study-demo",
+        "greens",
+        "gummies",
+        "travel"
+      ],
+      "option": {
+        "name": "Flavor",
+        "values": [
+          "Original"
+        ]
+      },
+      "variants": [
+        {
+          "option": "Original",
+          "price": "14.99"
+        }
+      ],
+      "verifiedFacts": [
+        "7 single-serve packets",
+        "2 gummies per packet",
+        "Same gummies as the 28-Day Pouch"
+      ]
+    },
+    {
+      "handle": "demo-daily-greens-powder-30-servings",
+      "title": "Daily Greens Powder, 30 Servings",
+      "descriptionHtml": "<p>A greens drink powder in a resealable tub with a scoop. Mix one scoop with water or a smoothie.</p>",
+      "productType": "Powder",
+      "vendor": "Demo Greens Co.",
+      "tags": [
+        "case-study-demo",
+        "daily",
+        "greens",
+        "powder"
+      ],
+      "option": {
+        "name": "Flavor",
+        "values": [
+          "Unflavored",
+          "Mint"
+        ]
+      },
+      "variants": [
+        {
+          "option": "Unflavored",
+          "price": "44.99"
+        },
+        {
+          "option": "Mint",
+          "price": "44.99"
+        }
+      ],
+      "verifiedFacts": [
+        "30 servings per tub",
+        "Scoop included",
+        "Mix 1 scoop with 8 oz of water",
+        "Available in Unflavored and Mint"
+      ]
+    },
+    {
+      "handle": "demo-stainless-shaker-bottle-20oz",
+      "title": "Stainless Shaker Bottle, 20 oz",
+      "descriptionHtml": "<p>A 20 oz stainless steel shaker bottle with a mixing ball, made for powders and drink mixes.</p>",
+      "productType": "Accessory",
+      "vendor": "Demo Greens Co.",
+      "tags": [
+        "accessory",
+        "case-study-demo",
+        "powder",
+        "shaker"
+      ],
+      "option": {
+        "name": "Color",
+        "values": [
+          "Black",
+          "Sage"
+        ]
+      },
+      "variants": [
+        {
+          "option": "Black",
+          "price": "16.99"
+        },
+        {
+          "option": "Sage",
+          "price": "16.99"
+        }
+      ],
+      "verifiedFacts": [
+        "20 oz capacity",
+        "Stainless steel body",
+        "Includes a stainless mixing ball",
+        "Leak-resistant screw lid"
+      ]
+    },
+    {
+      "handle": "demo-daily-greens-starter-bundle",
+      "title": "Daily Greens Starter Bundle",
+      "descriptionHtml": "<p>A 28-Day Pouch of daily greens gummies together with a Glass Storage Jar to keep them on the counter.</p>",
+      "productType": "Bundle",
+      "vendor": "Demo Greens Co.",
+      "tags": [
+        "bundle",
+        "case-study-demo",
+        "greens",
+        "gummies"
+      ],
+      "option": {
+        "name": "Flavor",
+        "values": [
+          "Original"
+        ]
+      },
+      "variants": [
+        {
+          "option": "Original",
+          "price": "59.99"
+        }
+      ],
+      "verifiedFacts": [
+        "Includes one 28-Day Pouch (Original)",
+        "Includes one Glass Storage Jar"
+      ]
+    },
+    {
+      "handle": "demo-glass-storage-jar",
+      "title": "Glass Storage Jar",
+      "descriptionHtml": "<p>A clear glass jar with an airtight bamboo lid. Holds one 28-Day Pouch of gummies.</p>",
+      "productType": "Accessory",
+      "vendor": "Demo Greens Co.",
+      "tags": [
+        "accessory",
+        "case-study-demo",
+        "gummies",
+        "storage"
+      ],
+      "option": {
+        "name": "Finish",
+        "values": [
+          "Clear"
+        ]
+      },
+      "variants": [
+        {
+          "option": "Clear",
+          "price": "19.99"
+        }
+      ],
+      "verifiedFacts": [
+        "Holds one 28-Day Pouch of gummies",
+        "Glass jar with bamboo lid",
+        "Airtight silicone seal"
+      ]
+    },
+    {
+      "handle": "demo-pocket-travel-tin",
+      "title": "Pocket Travel Tin",
+      "descriptionHtml": "<p>A small metal tin with a hinged lid that holds a few days of gummies on the go. </p>",
+      "productType": "Accessory",
+      "vendor": "Demo Greens Co.",
+      "tags": [
+        "accessory",
+        "case-study-demo",
+        "gummies",
+        "travel"
+      ],
+      "option": {
+        "name": "Finish",
+        "values": [
+          "Silver"
+        ]
+      },
+      "variants": [
+        {
+          "option": "Silver",
+          "price": "11.99"
+        }
+      ],
+      "verifiedFacts": [
+        "Holds up to 6 gummies",
+        "Hinged metal lid",
+        "Pocket-sized: 3 x 2 inches"
+      ]
+    },
+    {
+      "handle": "demo-evening-routine-gummies-28-day",
+      "title": "Evening Routine Gummies, 28-Day Pouch",
+      "descriptionHtml": "<p>A 28-day pouch of chewable gummies made for the evening part of your routine.</p>",
+      "productType": "Gummies",
+      "vendor": "Demo Greens Co.",
+      "tags": [
+        "case-study-demo",
+        "evening",
+        "gummies"
+      ],
+      "option": {
+        "name": "Flavor",
+        "values": [
+          "Original"
+        ]
+      },
+      "variants": [
+        {
+          "option": "Original",
+          "price": "39.99"
+        }
+      ],
+      "verifiedFacts": [
+        "28 gummies per pouch",
+        "1 gummy per evening",
+        "Resealable pouch"
+      ]
+    },
+    {
+      "handle": "demo-electrolyte-drink-mix-10-sticks",
+      "title": "Electrolyte Drink Mix, 10 Sticks",
+      "descriptionHtml": "<p>Ten single-serve stick packs of a citrus drink mix. Empty one stick into a bottle of water and shake.</p>",
+      "productType": "Drink Mix",
+      "vendor": "Demo Greens Co.",
+      "tags": [
+        "case-study-demo",
+        "drink mix",
+        "powder",
+        "travel"
+      ],
+      "option": {
+        "name": "Flavor",
+        "values": [
+          "Citrus"
+        ]
+      },
+      "variants": [
+        {
+          "option": "Citrus",
+          "price": "19.99"
+        }
+      ],
+      "verifiedFacts": [
+        "10 single-serve stick packs",
+        "Mix 1 stick with 16 oz of water",
+        "Citrus flavor"
+      ]
+    },
+    {
+      "handle": "demo-canvas-tote",
+      "title": "Canvas Tote",
+      "descriptionHtml": "<p>A sturdy cotton canvas tote bag with the Demo Greens Co. logo.</p>",
+      "productType": "Merchandise",
+      "vendor": "Demo Greens Co.",
+      "tags": [
+        "case-study-demo",
+        "merchandise",
+        "tote"
+      ],
+      "option": {
+        "name": "Color",
+        "values": [
+          "Natural"
+        ]
+      },
+      "variants": [
+        {
+          "option": "Natural",
+          "price": "24.99"
+        }
+      ],
+      "verifiedFacts": [
+        "100% cotton canvas",
+        "15 x 16 inches",
+        "Reinforced handles"
+      ]
+    }
+  ]
+}

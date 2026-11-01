@@ -17,6 +17,7 @@ Last updated: 2026-10-31.
   - content-only Events triggers
   - a content hash, so price and stock changes cost nothing
   - a manual mode, so the merchant decides when a run happens (section 7)
+  - an optional upsell tag, so only tagged products count toward catalog size
 - **The biggest levers not built yet:** incremental rebuilds and a candidate shortlist. Together they take a 1,000-product edit from ~$10 to ~$0.003 (estimate, section 8).
 
 ## 2. Prices

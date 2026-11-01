@@ -87,6 +87,7 @@ module.exports = {
         "shopify.server.{js,ts}",
         "**/*.server.{js,ts}",
         "test/**/*.js",
+        "scripts/**/*.js",
       ],
       env: {
         node: true,

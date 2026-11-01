@@ -2,6 +2,7 @@ import { fetchProduct } from "./shopify-catalog.server";
 import { retireProducts, upsertProductSnapshot } from "./product-sync.server";
 import { startQueue } from "./enrichment-queue.server";
 import { getSettings } from "../settings.server";
+import { isInUpsellCatalog } from "./catalog-scope";
 
 /**
  * Keeps product intelligence current from Shopify Product Events, so a
@@ -54,12 +55,13 @@ export async function handleProductEvent({ shop, admin, action, productId }) {
 
   // Read the current product instead of trusting the event payload: events
   // can arrive late or out of order, but Shopify's current state can't.
-  const product = await fetchProduct(admin, productId);
-  if (!product || product.status !== "ACTIVE") return retire();
+  // Removing the upsell tag in Admin takes a product out like archiving does.
+  const [product, settings] = await Promise.all([fetchProduct(admin, productId), getSettings(shop)]);
+  if (!isInUpsellCatalog(product, settings.upsellTag)) return retire();
 
   const result = await upsertProductSnapshot({ shop, product });
   if (result !== "unchanged") {
-    if ((await getSettings(shop)).autoEnrich) {
+    if (settings.autoEnrich) {
       startQueue(shop);
     } else {
       console.log(`[events] ${shop}: automatic AI updates are off; ${productId} waits for a manual run`);

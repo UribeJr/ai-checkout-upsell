@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useFetcher, useLoaderData, useRevalidator } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
@@ -6,16 +6,20 @@ import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { getSettings, updateSettings } from "../services/settings.server";
 import { isQueueRunning, startQueue } from "../services/catalog/enrichment-queue.server";
+import { syncCatalog } from "../services/catalog/product-sync.server";
+import { normalizeTag } from "../services/catalog/catalog-scope";
 
-// Settings: whether product changes start AI enrichment automatically, and a
-// button to run it by hand. Manual mode lets the merchant decide when AI cost
-// happens; one run covers every change recorded since the last one.
+// Settings: which products are in the upsell catalog (optional tag), whether
+// product changes start AI enrichment automatically, and a button to run it by
+// hand. Manual mode lets the merchant decide when AI cost happens; one run
+// covers every change recorded since the last one.
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
 
-  const [settings, waiting, failed, lastRun] = await Promise.all([
+  const [settings, inCatalog, waiting, failed, lastRun] = await Promise.all([
     getSettings(shop),
+    prisma.productIntelligence.count({ where: { shop, deletedAt: null } }),
     prisma.productIntelligence.count({
       where: { shop, deletedAt: null, enrichmentStatus: "PENDING" },
     }),
@@ -30,6 +34,8 @@ export const loader = async ({ request }) => {
 
   return {
     autoEnrich: settings.autoEnrich,
+    upsellTag: settings.upsellTag,
+    inCatalog,
     waiting,
     failed,
     lastEnrichedAt: lastRun._max.enrichedAt?.toISOString() ?? null,
@@ -38,9 +44,26 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = formData.get("intent");
+
+  if (intent === "upsellTag") {
+    const { tag, error } = normalizeTag(formData.get("tag"));
+    if (error) return { error };
+
+    // Re-sync right away: products outside the new scope are retired (no AI
+    // cost), products that came into it are queued for enrichment.
+    await updateSettings(session.shop, { upsellTag: tag });
+    const counts = await syncCatalog({ shop: session.shop, admin });
+    const { autoEnrich } = await getSettings(session.shop);
+    if (autoEnrich && counts.created + counts.changed > 0) startQueue(session.shop);
+
+    const added = counts.created + counts.changed;
+    return {
+      message: `Upsell catalog updated: ${added} added or changed, ${counts.removed} removed`,
+    };
+  }
 
   if (intent === "autoEnrich") {
     const autoEnrich = formData.get("enabled") === "true";
@@ -59,8 +82,10 @@ export const action = async ({ request }) => {
 };
 
 export default function Settings() {
-  const { autoEnrich, waiting, failed, lastEnrichedAt, queueRunning } = useLoaderData();
+  const { autoEnrich, upsellTag, inCatalog, waiting, failed, lastEnrichedAt, queueRunning } =
+    useLoaderData();
   const fetcher = useFetcher();
+  const tagField = useRef(null);
   const revalidator = useRevalidator();
   const shopify = useAppBridge();
 
@@ -72,6 +97,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (fetcher.data?.message) shopify.toast.show(fetcher.data.message);
+    if (fetcher.data?.error) shopify.toast.show(fetcher.data.error, { isError: true });
   }, [fetcher.data, shopify]);
 
   // Poll while a run is going so the counts update live.
@@ -89,8 +115,39 @@ export default function Settings() {
       { method: "POST" },
     );
 
+  // The field keeps its own typed value; we read it when Save is pressed.
+  const saveTag = () =>
+    fetcher.submit({ intent: "upsellTag", tag: tagField.current?.value ?? "" }, { method: "POST" });
+
   return (
     <s-page heading="Settings">
+      <s-section heading="Upsell catalog">
+        <s-stack gap="base">
+          <s-paragraph>
+            {upsellTag ? (
+              <>
+                Products tagged <s-text type="strong">{upsellTag}</s-text>
+              </>
+            ) : (
+              "All active products"
+            )}{" "}
+            · {inCatalog} product{inCatalog === 1 ? "" : "s"} in the catalog now.
+          </s-paragraph>
+          <s-text-field
+            ref={tagField}
+            label="Upsell tag"
+            name="tag"
+            value={upsellTag ?? ""}
+            placeholder="Leave empty for all active products"
+            details="Only active products with this tag are enriched, offered and used to pick offers."
+            error={fetcher.data?.error}
+          />
+          <s-button onClick={saveTag} {...loadingProps("upsellTag")}>
+            Save and sync
+          </s-button>
+        </s-stack>
+      </s-section>
+
       <s-section heading="AI updates">
         <s-stack gap="base">
           <s-stack direction="inline" gap="base" alignItems="center">
@@ -133,6 +190,16 @@ export default function Settings() {
             Run AI update
           </s-button>
         </s-stack>
+      </s-section>
+
+      <s-section slot="aside" heading="Upsell tag">
+        <s-paragraph>
+          Add the tag to a product in Shopify Admin to bring it into the upsell
+          catalog; remove it to take the product out (its relationships are
+          removed right away, at no AI cost). New products in the catalog are
+          enriched by the next AI run. Leave the tag empty to use every active
+          product.
+        </s-paragraph>
       </s-section>
 
       <s-section slot="aside" heading="What a run costs">

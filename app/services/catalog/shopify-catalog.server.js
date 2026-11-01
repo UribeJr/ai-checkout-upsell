@@ -1,3 +1,5 @@
+import { catalogSearchQuery } from "./catalog-scope";
+
 /**
  * Admin GraphQL reads of the product catalog. Shopify is the source of truth;
  * the app only needs `read_products` for these queries.
@@ -29,8 +31,8 @@ const PRODUCT_FIELDS = `#graphql
 
 const ACTIVE_PRODUCTS_QUERY = `#graphql
   ${PRODUCT_FIELDS}
-  query CatalogProducts($after: String) {
-    products(first: 50, after: $after, query: "status:active") {
+  query CatalogProducts($after: String, $query: String!) {
+    products(first: 50, after: $after, query: $query) {
       nodes {
         ...CatalogProduct
       }
@@ -56,14 +58,15 @@ export async function fetchProduct(admin, productId) {
   return data.product;
 }
 
-// Returns every ACTIVE product, following pagination.
-export async function fetchActiveProducts(admin) {
+// Returns every ACTIVE product (with the upsell tag, when one is set),
+// following pagination.
+export async function fetchActiveProducts(admin, { tag = null } = {}) {
   const products = [];
   let after = null;
 
   do {
     const response = await admin.graphql(ACTIVE_PRODUCTS_QUERY, {
-      variables: { after },
+      variables: { after, query: catalogSearchQuery(tag) },
     });
     const { data } = await response.json();
 

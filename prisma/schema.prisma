@@ -157,5 +157,6 @@ model OfferEvent {
 model ShopSettings {
   shop       String   @id
   autoEnrich Boolean  @default(true) // false = product changes wait for a manual AI run
+  upsellTag  String? // only products with this tag are in the upsell catalog; null = all active products
   updatedAt  DateTime @updatedAt
 }

@@ -1,6 +1,8 @@
 import prisma from "../../db.server";
 import { fetchActiveProducts } from "./shopify-catalog.server";
 import { buildSnapshot, buildSourceHash } from "./product-snapshot";
+import { isInUpsellCatalog } from "./catalog-scope";
+import { getSettings } from "../settings.server";
 
 /**
  * Keeps ProductIntelligence in step with the Shopify catalog.
@@ -10,9 +12,14 @@ import { buildSnapshot, buildSourceHash } from "./product-snapshot";
  * so a re-sync costs no AI calls.
  */
 
-// Full sync: upsert every ACTIVE product and retire the ones that are gone.
+// Full sync: upsert every product in the upsell catalog (ACTIVE, plus the
+// upsell tag when one is set) and retire the ones that are gone or untagged.
 export async function syncCatalog({ shop, admin }) {
-  const products = await fetchActiveProducts(admin);
+  const { upsellTag } = await getSettings(shop);
+  // Shopify's search index can lag behind a tag edit, so check the tag again.
+  const products = (await fetchActiveProducts(admin, { tag: upsellTag })).filter((product) =>
+    isInUpsellCatalog(product, upsellTag),
+  );
   const now = new Date();
   const counts = { created: 0, changed: 0, unchanged: 0, removed: 0 };
 
@@ -28,7 +35,8 @@ export async function syncCatalog({ shop, admin }) {
     now,
   });
 
-  console.log(`[sync] ${shop}: ${JSON.stringify(counts)}`);
+  const scope = upsellTag ? `tag "${upsellTag}"` : "all active products";
+  console.log(`[sync] ${shop} (${scope}): ${JSON.stringify(counts)}`);
   return counts;
 }
 

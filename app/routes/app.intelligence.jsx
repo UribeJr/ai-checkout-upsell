@@ -5,6 +5,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { syncCatalog } from "../services/catalog/product-sync.server";
+import { getSettings } from "../services/settings.server";
 import {
   isQueueRunning,
   reEnrichAll,
@@ -17,7 +18,7 @@ export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
 
-  const [products, relationships] = await Promise.all([
+  const [products, relationships, settings] = await Promise.all([
     prisma.productIntelligence.findMany({
       where: { shop },
       orderBy: [{ deletedAt: "asc" }, { title: "asc" }],
@@ -27,6 +28,7 @@ export const loader = async ({ request }) => {
       where: { shop },
       orderBy: [{ sourceProductId: "asc" }, { score: "desc" }],
     }),
+    getSettings(shop),
   ]);
 
   // What Shopify has actually granted this app, not what we last requested.
@@ -44,6 +46,7 @@ export const loader = async ({ request }) => {
 
   return {
     grantedScopes: data.currentAppInstallation.accessScopes.map((scope) => scope.handle),
+    upsellTag: settings.upsellTag,
     queueRunning: isQueueRunning(shop),
     products: products.map((product) => ({
       id: product.id,
@@ -99,7 +102,7 @@ const STATUS_TONES = {
 };
 
 export default function Intelligence() {
-  const { grantedScopes, queueRunning, products, relationships } = useLoaderData();
+  const { grantedScopes, upsellTag, queueRunning, products, relationships } = useLoaderData();
   const fetcher = useFetcher();
   const revalidator = useRevalidator();
   const shopify = useAppBridge();
@@ -225,6 +228,19 @@ export default function Intelligence() {
             </s-table-body>
           </s-table>
         )}
+      </s-section>
+
+      <s-section slot="aside" heading="Upsell catalog">
+        <s-paragraph>
+          {upsellTag ? (
+            <>
+              Products tagged <s-text type="strong">{upsellTag}</s-text>.
+            </>
+          ) : (
+            "All active products."
+          )}{" "}
+          <s-link href="/app/settings">Change in Settings</s-link>
+        </s-paragraph>
       </s-section>
 
       <s-section slot="aside" heading="Access">
