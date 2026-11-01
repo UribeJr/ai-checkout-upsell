@@ -71,7 +71,7 @@ PIPELINE A: PRODUCT INTELLIGENCE (ahead of checkout)
      -> relationships.server: OpenAI(profile + compact catalog) -> validate -> replace edges
    Price/inventory edits: no delivery (not in triggers) + hash unchanged -> zero AI calls
 
-PIPELINE B: OFFER SELECTION (checkout, < 4s end to end)
+PIPELINE B: OFFER SELECTION (checkout; Shopify requires network calls < 2 s)
  ShouldRender -> POST /api/offer -> authenticate.public.checkout
    -> context from verified token (line items, subtotal, currency, referenceId)
    -> OfferDecision exists for referenceId? return it (idempotent)

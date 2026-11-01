@@ -30,8 +30,11 @@ import {
 
 import { APP_URL } from "./config";
 
-// How long we wait for our backend before giving up. Our own choice to keep
-// checkout fast (Shopify doesn't publish a limit); on timeout we skip the offer.
+// How long we wait for our backend before giving up; on timeout we skip the
+// offer. Shopify requires post-purchase network calls to complete in two
+// seconds or less (UX for post-purchase product offers, "Performance
+// consideration"). Our decisions take ~250 ms, so this limit only matters when
+// the backend is slow. Kept at 4 s by developer choice (2026-10-31).
 const BACKEND_TIMEOUT_MS = 4000;
 // Measurement calls get less time: they must never hold the buyer up.
 const EVENT_TIMEOUT_MS = 1500;
