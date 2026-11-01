@@ -229,9 +229,12 @@ function OfferPage({ offer }) {
           verified facts and checked by our backend. */}
       <CalloutBanner title={offer.headline}>
         {offer.description && <Text size="medium">{offer.description} </Text>}
-        <Text size="medium" emphasized>
-          Save {offer.discountPercent}%.
-        </Text>
+        {/* The discount is store policy (Settings page); 0 means none. */}
+        {offer.discountPercent > 0 && (
+          <Text size="medium" emphasized>
+            Save {offer.discountPercent}%.
+          </Text>
+        )}
       </CalloutBanner>
 
       <Layout
@@ -253,9 +256,14 @@ function OfferPage({ offer }) {
             <Heading>{offer.productTitle}</Heading>
             {totals ? (
               <TextBlock>
-                <Text role="deletion" size="large">
-                  {formatMoney(totals.originalPrice, totals.currencyCode)}
-                </Text>{" "}
+                {/* Strike through the original price only when there is a discount. */}
+                {Number(totals.originalPrice) !== Number(totals.discountedPrice) && (
+                  <>
+                    <Text role="deletion" size="large">
+                      {formatMoney(totals.originalPrice, totals.currencyCode)}
+                    </Text>{" "}
+                  </>
+                )}
                 <Text emphasized size="large" appearance="critical">
                   {formatMoney(totals.discountedPrice, totals.currencyCode)}
                 </Text>

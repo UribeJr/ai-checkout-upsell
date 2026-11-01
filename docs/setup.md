@@ -43,8 +43,8 @@ Fill in `.env`, and never commit it:
 |---|---|
 | `OPENAI_API_KEY` | Background enrichment and relationships |
 | `OPENAI_MODEL` | Model for those calls (this project used `gpt-6-luna`; see [`cost.md`](../cost.md)) |
-| `OFFER_DISCOUNT_PERCENT` | Discount on the offer, default `15` |
-| `OFFER_MAX_ORDER_RATIO` | Price cap: offer price <= ratio x order subtotal, default `1` |
+| `OFFER_DISCOUNT_PERCENT` | Default offer discount, `15` if unset. The **Settings** page overrides it |
+| `OFFER_MAX_ORDER_RATIO` | Default price cap (offer price <= ratio x order subtotal), `1` if unset. The **Settings** page overrides it |
 
 `SHOPIFY_API_KEY` and `SHOPIFY_API_SECRET` are provided by `shopify app dev`.
 

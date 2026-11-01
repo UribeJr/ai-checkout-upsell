@@ -8,8 +8,11 @@ import { getSettings, updateSettings } from "../services/settings.server";
 import { isQueueRunning, startQueue } from "../services/catalog/enrichment-queue.server";
 import { syncCatalog } from "../services/catalog/product-sync.server";
 import { normalizeTag } from "../services/catalog/catalog-scope";
+import { DISCOUNT_RANGE, PRICE_CAP_RANGE, normalizeOfferPolicyInput } from "../services/offers/offer-policy";
+import { getOfferPolicy, getOfferPolicyDefaults } from "../services/offers/candidate-engine.server";
 
-// Settings: which products are in the upsell catalog (optional tag), whether
+// Settings: the offer policy (discount, price cap), which products are in the
+// upsell catalog (optional tag), whether
 // product changes start AI enrichment automatically, and a button to run it by
 // hand. Manual mode lets the merchant decide when AI cost happens; one run
 // covers every change recorded since the last one.
@@ -17,8 +20,9 @@ export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
 
-  const [settings, inCatalog, waiting, failed, lastRun] = await Promise.all([
+  const [settings, offerPolicy, inCatalog, waiting, failed, lastRun] = await Promise.all([
     getSettings(shop),
+    getOfferPolicy(shop),
     prisma.productIntelligence.count({ where: { shop, deletedAt: null } }),
     prisma.productIntelligence.count({
       where: { shop, deletedAt: null, enrichmentStatus: "PENDING" },
@@ -35,6 +39,10 @@ export const loader = async ({ request }) => {
   return {
     autoEnrich: settings.autoEnrich,
     upsellTag: settings.upsellTag,
+    // The values in effect, and the ones saved here (null = env default).
+    offerPolicy,
+    savedPolicy: { discountPercent: settings.discountPercent, maxOrderRatio: settings.maxOrderRatio },
+    policyDefaults: getOfferPolicyDefaults(),
     inCatalog,
     waiting,
     failed,
@@ -48,9 +56,20 @@ export const action = async ({ request }) => {
   const formData = await request.formData();
   const intent = formData.get("intent");
 
+  if (intent === "offerPolicy") {
+    const { policy, errors } = normalizeOfferPolicyInput({
+      discountPercent: formData.get("discountPercent"),
+      maxOrderRatio: formData.get("maxOrderRatio"),
+    });
+    if (errors) return { policyErrors: errors, error: "Offer policy not saved; check the fields." };
+
+    await updateSettings(session.shop, policy);
+    return { message: "Offer policy saved; applies to new checkouts" };
+  }
+
   if (intent === "upsellTag") {
     const { tag, error } = normalizeTag(formData.get("tag"));
-    if (error) return { error };
+    if (error) return { error, tagError: error };
 
     // Re-sync right away: products outside the new scope are retired (no AI
     // cost), products that came into it are queued for enrichment.
@@ -82,10 +101,22 @@ export const action = async ({ request }) => {
 };
 
 export default function Settings() {
-  const { autoEnrich, upsellTag, inCatalog, waiting, failed, lastEnrichedAt, queueRunning } =
-    useLoaderData();
+  const {
+    autoEnrich,
+    upsellTag,
+    offerPolicy,
+    savedPolicy,
+    policyDefaults,
+    inCatalog,
+    waiting,
+    failed,
+    lastEnrichedAt,
+    queueRunning,
+  } = useLoaderData();
   const fetcher = useFetcher();
   const tagField = useRef(null);
+  const discountField = useRef(null);
+  const capField = useRef(null);
   const revalidator = useRevalidator();
   const shopify = useAppBridge();
 
@@ -115,12 +146,62 @@ export default function Settings() {
       { method: "POST" },
     );
 
+  // Empty fields save as "use the default".
+  const savePolicy = () =>
+    fetcher.submit(
+      {
+        intent: "offerPolicy",
+        discountPercent: discountField.current?.value ?? "",
+        maxOrderRatio: capField.current?.value ?? "",
+      },
+      { method: "POST" },
+    );
+  const sourceLabel = (field) =>
+    offerPolicy.sources[field] === "settings" ? "saved here" : "default";
+  const policyErrors = fetcher.data?.policyErrors ?? {};
+
   // The field keeps its own typed value; we read it when Save is pressed.
   const saveTag = () =>
     fetcher.submit({ intent: "upsellTag", tag: tagField.current?.value ?? "" }, { method: "POST" });
 
   return (
     <s-page heading="Settings">
+      <s-section heading="Offer policy">
+        <s-stack gap="base">
+          <s-paragraph>
+            Now: {offerPolicy.discountPercent}% off ({sourceLabel("discountPercent")}), offers up to{" "}
+            {offerPolicy.maxOrderRatio}× the order subtotal ({sourceLabel("maxOrderRatio")}).
+          </s-paragraph>
+          <s-number-field
+            ref={discountField}
+            label="Discount (%)"
+            name="discountPercent"
+            value={savedPolicy.discountPercent ?? ""}
+            min={DISCOUNT_RANGE.min}
+            max={DISCOUNT_RANGE.max}
+            step={1}
+            placeholder={`Default: ${policyDefaults.discountPercent}`}
+            details={`Whole number from ${DISCOUNT_RANGE.min} to ${DISCOUNT_RANGE.max}. 0 means no discount. Leave empty for the default.`}
+            error={policyErrors.discountPercent}
+          />
+          <s-number-field
+            ref={capField}
+            label="Price cap (× order subtotal)"
+            name="maxOrderRatio"
+            value={savedPolicy.maxOrderRatio ?? ""}
+            min={PRICE_CAP_RANGE.min}
+            max={PRICE_CAP_RANGE.max}
+            step={0.05}
+            placeholder={`Default: ${policyDefaults.maxOrderRatio}`}
+            details={`An offer can cost at most this many times the order subtotal (${PRICE_CAP_RANGE.min} to ${PRICE_CAP_RANGE.max}). Leave empty for the default.`}
+            error={policyErrors.maxOrderRatio}
+          />
+          <s-button onClick={savePolicy} {...loadingProps("offerPolicy")}>
+            Save offer policy
+          </s-button>
+        </s-stack>
+      </s-section>
+
       <s-section heading="Upsell catalog">
         <s-stack gap="base">
           <s-paragraph>
@@ -140,7 +221,7 @@ export default function Settings() {
             value={upsellTag ?? ""}
             placeholder="Leave empty for all active products"
             details="Only active products with this tag are enriched, offered and used to pick offers."
-            error={fetcher.data?.error}
+            error={fetcher.data?.tagError}
           />
           <s-button onClick={saveTag} {...loadingProps("upsellTag")}>
             Save and sync
@@ -190,6 +271,14 @@ export default function Settings() {
             Run AI update
           </s-button>
         </s-stack>
+      </s-section>
+
+      <s-section slot="aside" heading="Offer policy">
+        <s-paragraph>
+          The discount and price cap are set here, never by AI. A change applies
+          to new checkouts; a buyer already on the offer page keeps the discount
+          they were shown. Shopify calculates the final price.
+        </s-paragraph>
       </s-section>
 
       <s-section slot="aside" heading="Upsell tag">

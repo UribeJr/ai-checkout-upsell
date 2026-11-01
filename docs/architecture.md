@@ -34,6 +34,7 @@ flowchart TD
 - **Relationships** (`relationships.server.js`) give each product up to 5 related products. Each relationship has a score, a type (`COMPLEMENTARY`, `ACCESSORY`, `REFILL` or `UPGRADE`) and offer copy. The copy may only use the target product's `custom.verified_facts`.
 - **Verified facts** are written by the merchant and are the only facts the AI may quote; see [verified-facts.md](verified-facts.md).
 - **Validation** (`app/services/ai/validators.js`) checks every AI result before it is saved: known product IDs, no self-links, facts that really belong to the product, no prices, discounts or health-claim wording in the copy, and length limits. An invalid result is dropped and the previous data is kept.
+- **Scores can change between AI runs.** A rebuild re-scores every pair, so the top offer for a basket can change afterwards. For example, the Pouch's offer moved from the Glass Jar to the Travel Packs after one rebuild. The Offer preview always shows the current pick.
 - **The queue** (`enrichment-queue.server.js`) runs in-process, with one runner per shop and up to 3 attempts with backoff.
 
 ## Checkout: no AI call
@@ -66,7 +67,7 @@ How the backend decides (`app/services/offers/`):
 1. **Basket.** The purchased products, variants and subtotal come from the post-purchase token, which Shopify signs and the backend verifies.
 2. **Candidates.** The stored relationships of those products.
 3. **Rules.** Drop `UPGRADE` relationships, products already bought and scores below 0.6. When several cart items point at the same product, keep it once with +0.05 per extra item.
-4. **Live check.** One Shopify query for the top 8. Keep the first that is active, in stock and priced at or below the order subtotal.
+4. **Live check.** One Shopify query for the top 8. Keep the first that is active, in stock and within the price cap (by default, at or below the order subtotal; set on the Settings page).
 5. **Copy.** Use the stored AI copy only if every fact it cites is still a verified fact. Otherwise use template copy ("Add {product} to your order").
 6. **Store.** Save one `OfferDecision` per checkout. If Shopify calls again for the same checkout, the backend reuses it after another live check.
 
@@ -150,7 +151,7 @@ The full schema is in [`prisma/schema.prisma`](../prisma/schema.prisma). JSON fi
 - **Copy grounded in merchant facts.** The AI may cite only the product's `custom.verified_facts` metafield, which the merchant owns and the app only reads. At checkout, if a fact the copy cites has since been removed, the app uses template copy instead (the stale-fact guard).
 - **One stored decision per checkout.** Shopify can call ShouldRender more than once. The first call decides and saves an `OfferDecision`; later calls reuse that pick after a live check, so the buyer always sees the same offer. Checkouts with no offer are saved too.
 - **Only the stored pick is signed.** The browser only says which offer was accepted. The server rebuilds the changes from the saved decision and checks stock again, so a buyer can't change the product or discount, and an offer that sold out while the buyer was on the page is refused (409).
-- **Prices only from Shopify.** The extension shows only amounts returned by `calculateChangeset`. The discount (15% by default) is a server-side policy.
+- **Prices only from Shopify.** The extension shows only amounts returned by `calculateChangeset`. The discount is a server-side policy the merchant sets on the Settings page (15% by default, 0-50%). Each `OfferDecision` stores the discount it was made with, and signing uses that stored value, so changing the setting never changes an offer a buyer is already looking at.
 - **Least privilege.** The app asks only for `read_products`.
 - **Content-only triggers.** Events subscribe to title, description, type, tags, status, options and `custom.verified_facts`. Price and inventory edits never start AI work; they are read live at checkout.
 - **Upsell catalog by tag.** Settings can limit the app to products with one tag, for example `upsell`. Adding the tag in Admin brings a product in; removing it takes the product out right away, at no AI cost. With no tag, every active product is used. The tag also caps AI cost, which depends on catalog size.
@@ -160,7 +161,7 @@ The full schema is in [`prisma/schema.prisma`](../prisma/schema.prisma). JSON fi
 
 - **Product intelligence:** sync status, AI profiles and relationships for each product, plus the queue controls.
 - **Offer preview:** build a basket and see the offer checkout would choose, every candidate and why each one wasn't chosen. It runs the same decision code as checkout and makes no writes.
-- **Settings:** the upsell tag (which products are in the upsell catalog), automatic vs. manual AI updates, waiting and failed counts, and a manual **Run AI update** button.
+- **Settings:** the offer policy (discount 0-50% and price cap; env values are the defaults), the upsell tag (which products are in the upsell catalog), automatic vs. manual AI updates, waiting and failed counts, and a manual **Run AI update** button.
 - **Analytics:** offers shown, conversion, attributed revenue, revenue per offer shown, top offers (with a low-sample warning) and recent checkouts with their events.
 
 ## Limitations and future work

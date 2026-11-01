@@ -108,7 +108,7 @@ async function recheckPick({ admin, context, decision }) {
 
   const reason = checkStoredPick(liveProduct, decision.selectedVariantId, {
     purchasedVariantIds: context.purchasedVariantIds.map(toVariantGid),
-    maxPrice: subtotal * getOfferPolicy().maxOrderRatio,
+    maxPrice: subtotal * (await getOfferPolicy(decision.shop)).maxOrderRatio,
   });
   return { reason, liveProduct };
 }

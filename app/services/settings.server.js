@@ -9,12 +9,21 @@ import prisma from "../db.server";
  *
  * upsellTag: when set, only products with this tag are in the upsell catalog
  * (synced, enriched, offered). null means every active product.
+ *
+ * discountPercent, maxOrderRatio: the offer policy. null means the env
+ * default (see offers/offer-policy.js).
  */
-const DEFAULTS = { autoEnrich: true, upsellTag: null };
+const DEFAULTS = { autoEnrich: true, upsellTag: null, discountPercent: null, maxOrderRatio: null };
 
 export async function getSettings(shop) {
   const row = await prisma.shopSettings.findUnique({ where: { shop } });
-  return row ? { autoEnrich: row.autoEnrich, upsellTag: row.upsellTag } : { ...DEFAULTS };
+  if (!row) return { ...DEFAULTS };
+  return {
+    autoEnrich: row.autoEnrich,
+    upsellTag: row.upsellTag,
+    discountPercent: row.discountPercent,
+    maxOrderRatio: row.maxOrderRatio,
+  };
 }
 
 export async function updateSettings(shop, changes) {

@@ -57,6 +57,7 @@ You are the implementation partner for a Senior Full Stack Shopify Engineer case
 - [x] Deterministic offer engine wired into checkout, replacing the hardcoded offer (Phase 2 Slices 5-6, coded 2026-10-31; checkout tests in `docs/phase-2-test-checklist.md`).
 - [x] Analytics (impression / accept / decline / applied events, Analytics page): verified 2026-10-31 (Phase 4, `docs/phase-4-test-checklist.md`).
 - [x] Upsell catalog tag (Settings): verified by the developer 2026-11-01.
+- [ ] Offer policy (Settings: discount 0-50%, price cap): coded 2026-11-01; 10% checkout and mid-checkout change verified, 0% / price cap / reset tests pending (`docs/settings-test-checklist.md`).
 - [x] Reviewer setup: `scripts/demo-catalog.json` + `scripts/seed-demo-catalog.js` (standalone, dev stores only), documented in the README (2026-11-01). Write path not yet run on an empty store.
 
 The user plans to develop with **Claude Code in Cursor** and wants a readable JavaScript implementation. They have experience with Shopify apps, Prisma, Polaris, and Shopify Admin APIs, but this particular repository is new. Do not confuse it with any other Shopify app.

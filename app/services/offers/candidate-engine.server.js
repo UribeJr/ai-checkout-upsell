@@ -1,6 +1,8 @@
 import prisma from "../../db.server";
 import { parseVerifiedFacts } from "../catalog/product-snapshot";
-import { MIN_SCORE, pickOffer, rankCandidates } from "./candidate-ranking";
+import { pickOffer, rankCandidates } from "./candidate-ranking";
+import { resolveOfferPolicy } from "./offer-policy";
+import { getSettings } from "../settings.server";
 
 /**
  * The checkout offer decision, without AI: stored relationships of the
@@ -50,16 +52,15 @@ const LIVE_PRODUCTS_QUERY = `#graphql
     }
   }`;
 
-// Merchant policy from env vars. The discount is never decided by AI.
-export function getOfferPolicy() {
-  const ratio = Number(process.env.OFFER_MAX_ORDER_RATIO);
-  const discount = Number(process.env.OFFER_DISCOUNT_PERCENT ?? 15);
-  return {
-    minScore: MIN_SCORE,
-    // Offer price may be at most this multiple of the order subtotal.
-    maxOrderRatio: ratio > 0 ? ratio : 1,
-    discountPercent: Number.isFinite(discount) ? discount : 15,
-  };
+// Merchant policy: Settings page values, with env vars as defaults. The
+// discount is never decided by AI.
+export async function getOfferPolicy(shop) {
+  return resolveOfferPolicy(await getSettings(shop), process.env);
+}
+
+// The values used when nothing is saved on the Settings page.
+export function getOfferPolicyDefaults() {
+  return resolveOfferPolicy({}, process.env);
 }
 
 /**
@@ -103,7 +104,7 @@ export async function fetchLiveProducts(admin, productIds) {
  */
 export async function findOffer({ shop, admin, purchase }) {
   const startedAt = Date.now();
-  const policy = getOfferPolicy();
+  const policy = await getOfferPolicy(shop);
 
   const rows = await prisma.productRelationship.findMany({
     where: { shop, sourceProductId: { in: purchase.productIds } },

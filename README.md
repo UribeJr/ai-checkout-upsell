@@ -43,6 +43,7 @@ flowchart LR
 - **No AI call at checkout.** Shopify requires post-purchase network calls to finish within 2 seconds ([Shopify UX guidance](https://shopify.dev/docs/apps/build/checkout/product-offers/ux-for-post-purchase-product-offers)). The AI calls took 2.4-5.4 s (measured), while checkout decisions take 209-317 ms (measured on test orders).
 - **Copy only from verified facts.** The AI may cite only the merchant's `custom.verified_facts`. If a cited fact is later removed, checkout falls back to template copy.
 - **One stored decision per checkout, and only that pick is signed.** The buyer always sees the same offer, and the server rechecks stock before signing, so the browser can't change the product or discount.
+- **The merchant sets the offer policy.** The discount (0-50%) and the price cap are on the Settings page, never decided by AI. Each checkout keeps the discount it was shown.
 - **Least privilege and cost control.** The app needs only `read_products`. An optional upsell tag limits it to chosen products, and a manual AI mode lets the merchant decide when AI cost happens.
 
 The reasoning behind each decision is in [docs/architecture.md](docs/architecture.md#key-decisions).
@@ -81,12 +82,12 @@ Then:
 | [docs/analytics.md](docs/analytics.md) | See what the Analytics page measures and how each number is defined |
 | [docs/verified-facts.md](docs/verified-facts.md) | Write the product facts the AI may quote: rules, words that block AI copy, and a checklist |
 | [cost.md](cost.md) | See AI and hosting cost by catalog size, and the monthly production cost for one merchant |
-| `docs/phase-*-test-checklist.md` | Check test evidence for each phase, including real test orders |
+| `docs/*-test-checklist.md` | Check test evidence for each phase and for the Settings features, including real test orders |
 
 ## Testing
 
 ```sh
-npm test       # 61 unit tests: ranking, validators, token parsing, events, analytics, upsell tag, seed planning
+npm test       # 67 unit tests: ranking, validators, token parsing, events, analytics, upsell tag, offer policy, seed planning
 npm run lint
 ```
 

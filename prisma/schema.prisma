@@ -158,5 +158,7 @@ model ShopSettings {
   shop       String   @id
   autoEnrich Boolean  @default(true) // false = product changes wait for a manual AI run
   upsellTag  String? // only products with this tag are in the upsell catalog; null = all active products
+  discountPercent Int? // offer discount, 0-50; null = OFFER_DISCOUNT_PERCENT default
+  maxOrderRatio   Float? // price cap: offer price <= this x order subtotal; null = OFFER_MAX_ORDER_RATIO default
   updatedAt  DateTime @updatedAt
 }

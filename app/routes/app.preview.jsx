@@ -194,7 +194,8 @@ export default function OfferPreview() {
                 {offer.productTitle}
                 {offer.variantTitle && offer.variantTitle !== "Default Title" ? ` (${offer.variantTitle})` : ""}
                 {" · "}
-                {money(offer.price)} before {offer.discountPercent}% off (Shopify
+                {money(offer.price)}
+                {offer.discountPercent > 0 ? ` before ${offer.discountPercent}% off` : ", no discount"} (Shopify
                 calculates the final price)
               </s-paragraph>
               <s-paragraph>
