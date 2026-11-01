@@ -61,7 +61,7 @@ npm run setup        # prisma generate + migrate (SQLite file prisma/dev.sqlite)
 
 ## 6. Demo catalog
 
-The demo uses 10 fictional products from "Demo Greens Co.", tagged `case-study-demo`. Each carries merchant-approved facts in the product metafield `custom.verified_facts` (list of single-line text), and those are the only facts the AI offer copy may use. The full data is in [`scripts/demo-catalog.json`](../scripts/demo-catalog.json).
+The demo uses 10 fictional products from "Demo Greens Co.", tagged `case-study-demo`. Each carries merchant-approved facts in the product metafield `custom.verified_facts` (list of single-line text), and those are the only facts the AI offer copy may use. The full data is in [`scripts/demo-catalog.json`](../scripts/demo-catalog.json). For your own products, see [Writing verified facts](verified-facts.md).
 
 **Option A: seed script (recommended).** This is standalone reviewer tooling, not part of the app, and it uses your own Shopify CLI login:
 

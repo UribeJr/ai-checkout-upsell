@@ -79,6 +79,7 @@ Then:
 | [docs/setup.md](docs/setup.md) | Install, connect your store, seed the demo catalog and run a test checkout |
 | [docs/architecture.md](docs/architecture.md) | Understand both pipelines, the checkout rules, the data model, each design decision and the production path |
 | [docs/analytics.md](docs/analytics.md) | See what the Analytics page measures and how each number is defined |
+| [docs/verified-facts.md](docs/verified-facts.md) | Write the product facts the AI may quote: rules, words that block AI copy, and a checklist |
 | [cost.md](cost.md) | See AI and hosting cost by catalog size, and the monthly production cost for one merchant |
 | `docs/phase-*-test-checklist.md` | Check test evidence for each phase, including real test orders |
 

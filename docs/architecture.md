@@ -32,6 +32,7 @@ flowchart TD
 
 - **Enrichment** (`app/services/catalog/enrichment.server.js`) gives each product a category, format and use cases.
 - **Relationships** (`relationships.server.js`) give each product up to 5 related products. Each relationship has a score, a type (`COMPLEMENTARY`, `ACCESSORY`, `REFILL` or `UPGRADE`) and offer copy. The copy may only use the target product's `custom.verified_facts`.
+- **Verified facts** are written by the merchant and are the only facts the AI may quote; see [verified-facts.md](verified-facts.md).
 - **Validation** (`app/services/ai/validators.js`) checks every AI result before it is saved: known product IDs, no self-links, facts that really belong to the product, no prices, discounts or health-claim wording in the copy, and length limits. An invalid result is dropped and the previous data is kept.
 - **The queue** (`enrichment-queue.server.js`) runs in-process, with one runner per shop and up to 3 attempts with backoff.
 
