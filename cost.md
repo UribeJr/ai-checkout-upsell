@@ -6,7 +6,7 @@ What it costs to run and scale this app. **Update this file whenever a price, a 
 - **Measured:** observed in this project (logs, database, vendor dashboard)
 - **Estimate:** calculated by us from measured sizes plus stated assumptions
 
-Last updated: 2026-10-31.
+Last updated: 2026-11-01.
 
 ## 1. Summary
 
@@ -18,6 +18,7 @@ Last updated: 2026-10-31.
   - a content hash, so price and stock changes cost nothing
   - a manual mode, so the merchant decides when a run happens (section 7)
   - an optional upsell tag, so only tagged products count toward catalog size
+- **In production, for one merchant** (section 9, estimates): the app's own cost is AI. It's about $1 a month at 50 products, $14 at 200 and $308 at 1,000 (manual mode), whatever the order volume. Hosting comes on top, depends on the merchant's infrastructure, and is about $45-88 a month on the Fly.io example.
 - **The biggest levers not built yet:** incremental rebuilds and a candidate shortlist. Together they take a 1,000-product edit from ~$10 to ~$0.003 (estimate, section 8).
 
 ## 2. Prices
@@ -31,9 +32,13 @@ Last updated: 2026-10-31.
 | gpt-6-luna cache writes | "30m write" $0.125, "12h write" $0.25 per 1M (standard, ≤272K) | same; the page doesn't explain these columns | 2026-10-31 |
 | Regional processing (data residency) | +10% (models released on/after 2026-03-05) | same | 2026-10-31 |
 | Shopify Admin API (catalog reads, Events) | Not priced per call; rate-limited | to verify against current Shopify terms | — |
-| App hosting (server + background worker) | TBD | not chosen yet | — |
-| Database (SQLite now; Postgres in production) | TBD | not chosen yet | — |
-| Shopify app distribution / revenue share | TBD; only relevant if listed publicly | to verify | — |
+| Fly.io Machine, shared-cpu-1x 1GB, 24/7 | $6.70 per 30 days (512MB: $3.69); no platform fee, no free tier | https://docs.fly.io/about/pricing (iad/ewr, lowest-priced regions) | 2026-11-01 |
+| Fly.io outbound data (North America, Europe) | $0.02/GB; inbound free | same | 2026-11-01 |
+| Fly Managed Postgres Basic (shared-2x, 1GB) / Starter (2GB) | $38.00 / $72.00 per month; storage $0.28/GB; HA, backups, pooling included | https://docs.fly.io/postgres | 2026-11-01 |
+| Neon Postgres, Launch plan | Usage-based, no minimum: $0.106/CU-hour, $0.35/GB-month; Neon's own examples: $15 (intermittent) to $22 (small always-on) per month | https://neon.com/pricing | 2026-11-01 |
+| Render (web service, Postgres) | Not retrieved: the pricing page loads prices with JavaScript | https://render.com/pricing | — |
+| Shopify custom app (one store) | No distribution fee or revenue share found; the $19 App Store registration and revenue share apply to App Store apps only | https://shopify.dev/docs/apps/launch/distribution, .../distribution/revenue-share | 2026-11-01 |
+| Shopify plan requirement | "Only Plus merchants can install custom apps which use post-purchase checkout extensions." Live stores also need access approval (review up to 7 days) | https://shopify.dev/docs/apps/build/checkout/product-offers/build-a-post-purchase-offer | 2026-11-01 |
 
 ## 3. Where cost comes from
 
@@ -105,16 +110,91 @@ Method: measured the character counts of our prompts, schemas and stored AI outp
 | Debounce events (~60 s quiet window) | Fewer runs during bursts | Small |
 | Usage logging (`response.usage`) | Real token counts instead of estimates | Tiny |
 
-## 9. Measured spend
+## 9. Production cost, one merchant (estimates)
+
+For a single brand running the app as a custom app on its own store. All tiers are **assumptions** for illustration, not any real store's numbers.
+
+The cost splits in two:
+- **The app's own cost** is AI, and it holds wherever the app runs. A custom app pays no Shopify fee, Admin API calls aren't charged per call, and checkout makes no AI call.
+- **Hosting** is a business decision that depends on the merchant's existing infrastructure. If they already run servers and Postgres, the app could add little. The Fly.io figures below are one example, not a recommendation.
+
+**Prerequisite to confirm with the merchant:** they must be on **Shopify Plus**. Shopify only lets Plus stores install custom apps that use post-purchase extensions. That's the merchant's subscription, not an app cost.
+
+### The app's own cost: AI per month
+
+| | Small (50 products) | Medium (200 products) | Large (1,000 products) |
+|---|---|---|---|
+| **Manual mode, one run per day** (recommended today) | **~$1** | **~$14** | **~$308** |
+| After the AI cost levers | ~$1 | ~$5 | ~$18 |
+| One-time first setup | ~$0.05 | ~$0.50 | ~$10 |
+
+The number of orders doesn't change these. Full detail, including automatic mode, is in the AI table further down.
+
+### What the app needs from any hosting
+
+- One always-on Node.js server. Checkout must answer within Shopify's 2-second limit.
+- A Postgres database. About 1.2 KB is stored per checkout (measured).
+- A background job runner for AI updates. This can share the server.
+- The load is up to 6 small requests per checkout, well under 1 per second on average even at 150,000 orders a month.
+
+### Tiers (assumptions)
+
+| | Small | Medium | Large |
+|---|---|---|---|
+| Products in the upsell catalog | 50 | 200 | 1,000 |
+| Orders per month | 5,000 | 30,000 | 150,000 |
+| Content edits per day | 5 | 20 | 50 |
+| Backend requests per month (up to 6 per checkout: offer, events, sign) | ~30K | ~180K | ~900K (about 0.35 per second on average) |
+| Offer data per month (1.2 KB measured per checkout, ×2-3 for indexes and overhead) | ~15 MB | ~90 MB | ~450 MB |
+
+### Hosting example: Fly.io, monthly
+
+| | Small | Medium | Large |
+|---|---|---|---|
+| App server | 1 × 1GB Machine: $6.70 | 2 × 1GB (redundancy): $13.40 | 2 × 1GB: $13.40 |
+| Postgres | Basic $38.00 + 1 GB $0.28 | Basic $38.00 + 2 GB $0.56 | Starter $72.00 + 10 GB $2.80 |
+| Background jobs | $0: a Postgres-backed queue (assumption) on the same Machines, no Redis | $0 | $0 |
+| **Hosting total** | **~$45** | **~$52** | **~$88** |
+
+Outbound data stays under $1 at every tier. Swapping in Neon instead of Fly Managed Postgres would bring hosting to about $22-29 (Small) and $28-35 (Medium). That uses Neon's own examples of $15-22 per month, which assume their example load, not ours.
+
+### AI (monthly, standard pricing)
+
+The relationship rebuild dominates. One full run costs about $0.04 at 50 products, $0.45 at 200 and $10.25 at 1,000 (section 5 method).
+
+| Mode | Small | Medium | Large |
+|---|---|---|---|
+| Automatic, worst case (a full run per edit) | ~$6 | ~$270 | ~$15,400 |
+| **Manual, one run per day** (current design) | **~$1** | **~$14** | **~$308** |
+| After the levers: incremental rebuild with a shortlist (~$0.003 per edit) plus a nightly shortlist rebuild | ~$1 | ~$5 | ~$18 |
+
+### Total per month, with the Fly.io example
+
+| | Small | Medium | Large |
+|---|---|---|---|
+| Current design, manual daily run | **~$46** | **~$66** | **~$396** |
+| After the AI cost levers | ~$46 | ~$57 | ~$106 |
+| Per order, current design | ~$0.009 | ~$0.002 | ~$0.003 |
+| Per order, after the levers | ~$0.009 | ~$0.002 | ~$0.0007 |
+
+**What this shows:**
+- Hosting is the floor and barely moves with order volume, because checkout makes no AI call.
+- AI cost depends on catalog size and edit frequency. It's negligible up to a few hundred products. At 1,000 products, the manual mode and then the levers are what keep it in check.
+- Automatic mode without the levers is the only setup that gets expensive at scale. Don't run it at 1,000 products.
+
+**Not included:** the Shopify Plus subscription, error monitoring and logging (free tiers exist; not priced here), a custom domain, Fly support ($29/month standard, optional) and developer time.
+
+## 10. Measured spend
 
 | Date | What ran | AI calls | Tokens | Cost | Source |
 |---|---|---|---|---|---|
 | 2026-10-31 | Checkout decisions (Slice 6 tests, 4 checkouts) | 0 | 0 | $0 AI; engine 223-317 ms each (measured, `OfferDecision.durationMs`) | dev DB |
 | 2026-10-30 to 31 | Dev runs: 3 full enrichments, ~5 relationship rebuilds, Slice 4 tests (10 products) | ~100 (estimate) | not logged | well under $1 (estimate) | to confirm in the OpenAI usage dashboard |
 
-## 10. Open questions
+## 11. Open questions
 
 - Does gpt-6-luna emit billed reasoning tokens with our settings (no reasoning parameter set)?
 - What exactly do the "30m write" / "12h write" cache prices mean for our calls?
-- Hosting and database choice and price (needed for a complete monthly figure).
+- Render prices for comparison (not retrievable from its pricing page).
+- Peak checkout load (for example during a sale) hasn't been load-tested.
 - Phase 4 analytics: event-write volume per order (DB cost only, no AI).

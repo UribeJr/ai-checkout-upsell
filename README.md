@@ -79,7 +79,7 @@ Then:
 | [docs/setup.md](docs/setup.md) | Install, connect your store, seed the demo catalog and run a test checkout |
 | [docs/architecture.md](docs/architecture.md) | Understand both pipelines, the checkout rules, the data model, each design decision and the production path |
 | [docs/analytics.md](docs/analytics.md) | See what the Analytics page measures and how each number is defined |
-| [cost.md](cost.md) | See AI and hosting cost by catalog size, measured or estimated |
+| [cost.md](cost.md) | See AI and hosting cost by catalog size, and the monthly production cost for one merchant |
 | `docs/phase-*-test-checklist.md` | Check test evidence for each phase, including real test orders |
 
 ## Testing
@@ -97,7 +97,7 @@ End-to-end results come from real test orders on the development store: #1012-#1
 - Outcomes don't feed back into ranking yet. The plan is to blend relationship scores with observed accept rates and revenue.
 - Three ranking fixes are planned: a ceiling on the multi-item bonus, a check so a cart isn't offered something a bundle in it already contains, and checking more than the top 8 when all of them fail.
 - It runs under `shopify app dev`. A demo without the dev server needs a hosted backend and a real app URL.
-- Post-purchase extensions are in beta and need extra access for production, and some payment methods get no post-purchase page.
+- Post-purchase extensions are in beta. On a live store, a custom app like this one needs a **Shopify Plus** merchant and Shopify's access approval. Some payment methods, such as wallets and installments, get no post-purchase page.
 
 The details are in [docs/architecture.md](docs/architecture.md#limitations-and-future-work), and what it would take to run this for real merchants is in [Production path](docs/architecture.md#production-path).
 

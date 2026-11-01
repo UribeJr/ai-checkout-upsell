@@ -186,7 +186,7 @@ None of this is built. These are the changes that would turn the case study into
 | Database | SQLite file | Postgres. JSON fields are already stored as strings, so the schema moves over as is |
 | Background jobs | In-process queue, one runner per shop (`enrichment-queue.server.js`) | A real job queue (for example SQS or BullMQ) running the same steps per job |
 | Event deduplication | Handled delivery IDs kept in memory | Stored, so duplicates are caught across restarts and instances |
-| Post-purchase access | Works on development stores | Shopify must grant post-purchase extension access before live stores can use it |
+| Post-purchase access | Works on development stores | The merchant must be on **Shopify Plus**: only Plus stores can install custom apps that use post-purchase extensions. Shopify must also approve access for the live store (review up to 7 days) |
 
 ### 2. Trustworthy numbers
 
@@ -215,3 +215,5 @@ The relationship rebuild is the cost that grows with catalog size², about $10 p
 | Batch API for nightly full rebuilds | About 50% off |
 
 Checkout cost doesn't change at any scale: it makes no AI call.
+
+For the full monthly cost of running this for one merchant (hosting, database and AI at three catalog and order sizes), see [cost.md section 9](../cost.md#9-production-cost-one-merchant-estimates).
