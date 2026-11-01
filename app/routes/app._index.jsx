@@ -18,12 +18,13 @@ export default function Index() {
         </s-paragraph>
         <s-unordered-list>
           <s-list-item>
-            Product intelligence is built ahead of checkout from your catalog
-            and its verified facts (<s-text>custom.verified_facts</s-text>).
+            Ahead of checkout, AI reads your catalog and its verified facts
+            (<s-text>custom.verified_facts</s-text>), finds which products go
+            together and writes offer copy that only uses those facts.
           </s-list-item>
           <s-list-item>
-            At checkout, eligible candidates are filtered by fixed rules, and AI
-            picks one and writes copy grounded in those facts.
+            At checkout there is no AI call: fixed rules and a live stock and
+            price check pick one offer from those stored relationships.
           </s-list-item>
           <s-list-item>
             Prices and discounts always come from Shopify and store policy,

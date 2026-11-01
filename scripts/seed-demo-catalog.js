@@ -70,12 +70,15 @@ function execute(query, variables = {}, { mutation = false } = {}) {
   return result.data ?? result;
 }
 
+// The product ID plus its first variant, for the test cart paths printed at the end.
+const PRODUCT_IDS = "id variants(first: 1) { nodes { id } }";
+
 // Shop, facts definition, Online Store publication and existing handles in one query.
 function readStore() {
   const handleLookups = catalog.products
     .map(
       (product, index) =>
-        `p${index}: productByIdentifier(identifier: { handle: ${JSON.stringify(product.handle)} }) { id }`,
+        `p${index}: productByIdentifier(identifier: { handle: ${JSON.stringify(product.handle)} }) { ${PRODUCT_IDS} }`,
     )
     .join("\n    ");
 
@@ -93,6 +96,9 @@ function readStore() {
     definition: data.definitions.nodes[0] ?? null,
     onlineStore: data.publications.nodes.find((publication) => publication.name === "Online Store") ?? null,
     existingHandles: catalog.products.filter((_, index) => data[`p${index}`]).map((product) => product.handle),
+    existingProducts: catalog.products
+      .map((product, index) => ({ title: product.title, ids: data[`p${index}`] }))
+      .filter((product) => product.ids),
   };
 }
 
@@ -114,7 +120,7 @@ function createProduct(product) {
   const data = execute(
     `mutation SeedProduct($input: ProductSetInput!) {
       productSet(input: $input, synchronous: true) {
-        product { id handle }
+        product { ${PRODUCT_IDS} }
         userErrors { field message }
       }
     }`,
@@ -163,6 +169,7 @@ function main() {
 
   if (!plan.createDefinition && plan.create.length === 0) {
     console.log("Nothing to do.");
+    printCartPaths(state.existingProducts);
     return;
   }
   if (!apply) {
@@ -171,6 +178,7 @@ function main() {
   }
 
   let failures = 0;
+  const created = [];
   const report = (label, errors) => {
     if (errors.length === 0) return console.log(`  done    ${label}`);
     failures += 1;
@@ -182,6 +190,7 @@ function main() {
   for (const product of plan.create) {
     const result = createProduct(product);
     report(product.title, result.userErrors);
+    if (result.product) created.push({ title: product.title, ids: result.product });
     if (result.product && state.onlineStore) {
       report(`publish ${product.title}`, publish(result.product.id, state.onlineStore.id));
     }
@@ -192,7 +201,19 @@ function main() {
       ? `Finished with ${failures} error(s).`
       : `Created ${plan.create.length} products tagged "${DEMO_TAG}".`,
   );
+  printCartPaths([...state.existingProducts, ...created]);
   process.exitCode = failures ? 1 : 0;
+}
+
+// Cart paths for test checkouts: put one after the store domain, or swap it
+// into the cart part of the post-purchase dev link.
+function printCartPaths(products) {
+  if (products.length === 0) return;
+  console.log("\nTest cart paths (first variant of each product):");
+  for (const { title, ids } of products) {
+    const variantId = ids.variants.nodes[0]?.id.split("/").pop();
+    if (variantId) console.log(`  /cart/${variantId}:1   ${title}`);
+  }
 }
 
 try {
