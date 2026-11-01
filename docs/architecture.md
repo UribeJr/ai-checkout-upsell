@@ -37,47 +37,68 @@ flowchart TD
 
 ## Checkout: no AI call
 
+Checkout has two moments. **While the buyer pays,** the extension asks the backend for an offer, and the backend decides from data the AI prepared earlier. **On the post-purchase page,** the buyer accepts or declines, and the backend signs only the offer it stored.
+
+### 1. While the buyer pays: decide the offer
+
+The extension's `ShouldRender` step calls `/api/offer`.
+
 ```mermaid
 sequenceDiagram
-    accTitle: Checkout offer sequence
-    accDescr: The extension asks the backend for an offer during payment. The backend decides once per checkout from stored relationships and a live Shopify check, then the extension shows Shopify-calculated prices. On accept, the backend rechecks and signs the stored pick, and Shopify applies it. Each step records an offer event.
+    accTitle: Deciding the offer while the buyer pays
+    accDescr: The extension asks the app backend for an offer. The backend applies its rules to stored relationships, checks stock and price in Shopify, saves the decision and returns one offer.
 
-    actor Buyer
-    participant Ext as Post-purchase extension
+    autonumber
+    participant Ext as Extension
     participant App as App backend
-    participant DB as App database
     participant Shop as Shopify
 
-    Buyer->>Ext: Pays for the order
-    Ext->>App: POST /api/offer (ShouldRender, signed token)
-    App->>DB: Stored relationships for the purchased products
-    App->>Shop: Live check of the top 8 (status, stock, price)
-    App->>DB: Save one OfferDecision for this checkout
-    App-->>Ext: Offer: product, AI or template copy, signed-change inputs
-    Ext->>Shop: calculateChangeset (prices, discount, shipping, tax)
-    Ext->>App: POST /api/offer-events (IMPRESSION)
-    alt Buyer presses Pay now
-        Ext->>App: POST /api/sign-changeset
-        App->>Shop: Recheck the stored pick
-        App-->>Ext: Signed changes (ACCEPTED), or 409 if no longer available
-        Ext->>Shop: applyChangeset
-        Ext->>App: POST /api/offer-events (APPLIED or APPLY_FAILED)
-    else Buyer declines
-        Ext->>App: POST /api/offer-events (DECLINED)
-    end
-    Ext-->>Buyer: Thank-you page
+    Ext->>App: Ask for an offer
+    App->>App: Apply the rules to stored relationships
+    App->>Shop: Check stock and price of the top 8
+    App->>App: Save the decision for this checkout
+    App-->>Ext: One offer with its copy
 ```
 
-How `/api/offer` picks the offer (`app/services/offers/`):
+How the backend decides (`app/services/offers/`):
 
 1. **Basket.** The purchased products, variants and subtotal come from the post-purchase token, which Shopify signs and the backend verifies.
 2. **Candidates.** The stored relationships of those products.
 3. **Rules.** Drop `UPGRADE` relationships, products already bought and scores below 0.6. When several cart items point at the same product, keep it once with +0.05 per extra item.
 4. **Live check.** One Shopify query for the top 8. Keep the first that is active, in stock and priced at or below the order subtotal.
 5. **Copy.** Use the stored AI copy only if every fact it cites is still a verified fact. Otherwise use template copy ("Add {product} to your order").
-6. **Store.** Save one `OfferDecision` per checkout. A repeat call reuses it after another live check.
+6. **Store.** Save one `OfferDecision` per checkout. If Shopify calls again for the same checkout, the backend reuses it after another live check.
 
-The extension shows only prices from Shopify's `calculateChangeset`. On **Pay now**, `/api/sign-changeset` rechecks the stored pick and signs changes it builds itself.
+If nothing passes, there is no offer, and the buyer goes straight to the thank-you page.
+
+### 2. On the offer page: accept or decline
+
+```mermaid
+sequenceDiagram
+    accTitle: Accepting the offer on the post-purchase page
+    accDescr: Shopify calculates the prices shown on the offer page. When the buyer presses Pay now, the backend rechecks and signs the stored offer, and Shopify adds it to the order. The backend records each step for Analytics.
+
+    autonumber
+    actor Buyer
+    participant Ext as Extension
+    participant App as App backend
+    participant Shop as Shopify
+
+    Ext->>Shop: Calculate prices for the offer
+    Ext->>App: Record "shown"
+    Buyer->>Ext: Press Pay now
+    Ext->>App: Sign the stored offer
+    App->>Shop: Recheck stock
+    App-->>Ext: Signed change
+    Ext->>Shop: Add it to the order
+    Ext->>App: Record "added"
+```
+
+- **Prices** on the page come only from Shopify (`calculateChangeset`), never from the backend.
+- **Pay now** calls `/api/sign-changeset`. The backend builds the change itself from the stored decision and signs it with the app secret, so the browser can't change the product or discount. Shopify then applies it (`applyChangeset`) and charges only the difference.
+- **If the offer sold out** while the page was open, the backend refuses to sign (HTTP 409). Nothing is added, and the buyer goes to the thank-you page.
+- **Decline this offer** records "declined" and goes to the thank-you page.
+- **Each step** (shown, accepted, added, declined, failed) is recorded through `/api/offer-events` for the Analytics page. See [analytics.md](analytics.md).
 
 ## Data model
 
