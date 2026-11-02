@@ -50,6 +50,7 @@ export const loader = async ({ request }) => {
     queueRunning: isQueueRunning(shop),
     products: products.map((product) => ({
       id: product.id,
+      productId: product.productId,
       title: product.title,
       status: product.status,
       retired: product.deletedAt !== null,
@@ -170,7 +171,11 @@ export default function Intelligence() {
             <s-table-body>
               {products.map((product) => (
                 <s-table-row key={product.id}>
-                  <s-table-cell>{product.title}</s-table-cell>
+                  <s-table-cell>
+                    <s-link href={`/app/intelligence/${product.productId.split("/").pop()}`}>
+                      {product.title}
+                    </s-link>
+                  </s-table-cell>
                   <s-table-cell>
                     {product.retired ? <s-badge tone="neutral">Retired</s-badge> : product.status}
                   </s-table-cell>

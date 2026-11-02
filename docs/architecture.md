@@ -155,13 +155,13 @@ The full schema is in [`prisma/schema.prisma`](../prisma/schema.prisma). JSON fi
 - **Least privilege.** The app asks only for `read_products`.
 - **Content-only triggers.** Events subscribe to title, description, type, tags, status, options and `custom.verified_facts`. Price and inventory edits never start AI work; they are read live at checkout.
 - **Upsell catalog by tag.** Settings can limit the app to products with one tag, for example `upsell`. Adding the tag in Admin brings a product in; removing it takes the product out right away, at no AI cost. With no tag, every active product is used. The tag also caps AI cost, which depends on catalog size.
-- **Manual AI mode.** Settings can turn automatic AI updates off. Changes still queue up, and the merchant runs them when they choose, which also controls cost.
+- **Manual AI mode, on by default.** Automatic AI updates start off, so no AI cost happens until the merchant presses **Run AI update**. Changes still queue up as pending in the meantime. Settings can turn automatic updates on, so each content change is enriched right away.
 
 ## Admin pages
 
-- **Product intelligence:** sync status, AI profiles and relationships for each product, plus the queue controls.
-- **Offer preview:** build a basket and see the offer checkout would choose, every candidate and why each one wasn't chosen. It runs the same decision code as checkout and makes no writes.
-- **Settings:** the offer policy (discount 0-50% and price cap; env values are the defaults), the upsell tag (which products are in the upsell catalog), automatic vs. manual AI updates, waiting and failed counts, and a manual **Run AI update** button.
+- **Product intelligence:** sync status, AI profiles and relationships for each product, plus the queue controls. Click a product to open its detail page: what the AI read (description, tags, verified facts), what it concluded (category, format, use cases, cited facts, model and version, and whether the profile is current), and its relationships in both directions, with the ones checkout never offers marked.
+- **Offer preview:** build a basket and see the offer checkout would choose, every candidate and why each one wasn't chosen. It runs the same decision code as checkout and makes no writes. In development only, it also shows an **Open test checkout** button for the same basket, and warns if the extension's `APP_URL` doesn't match the dev tunnel.
+- **Settings:** the offer policy (discount 0-50% and price cap; env values are the defaults), the upsell tag (which products are in the upsell catalog), automatic vs. manual AI updates (manual by default), waiting and failed counts, and a manual **Run AI update** button.
 - **Analytics:** offers shown, conversion, attributed revenue, revenue per offer shown, top offers (with a low-sample warning) and recent checkouts with their events.
 
 ## Limitations and future work

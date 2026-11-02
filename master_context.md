@@ -1,7 +1,7 @@
 # Master Context - Running Project State
 
 > **Any agent (Claude, Codex, Gemini, ...) start here.**
-> 1. Project root is `/Users/euribe/Desktop/ai-checkout-upsell/ai-checkout-upsell/` (the outer Desktop folder only wraps it).
+> 1. Project root is the folder that holds this file, `package.json` and `shopify.app.toml`.
 > 2. Read `CLAUDE.md` for the full spec, requirements and architecture rules. It rarely changes.
 > 3. Read this file for **current state**: what is done, what is verified, what is next.
 > 4. When you finish a slice or end a session, update "Current status" and the three status lists, and **append** to the Decisions log and Session log. Never rewrite history entries.
@@ -138,7 +138,6 @@ CLI access: `shopify store auth --store gruns-dev-store.myshopify.com --scopes r
 |---|---|
 | `master_context.md` | This file - running state for agent handoffs |
 | `AGENTS.md` | Added pointer to `CLAUDE.md` + this file (Codex reads AGENTS.md) |
-| `GEMINI.md` | Same pointer for Gemini CLI |
 | `extensions/intelligent-offer/` | CLI-generated post-purchase extension (`shopify.extension.toml` type `checkout_post_purchase`, `src/index.jsx`, `package.json`). `dist/` is gitignored. |
 
 | `extensions/intelligent-offer/src/index.jsx` | ShouldRender fetches the offer (render only if one exists); Render shows it with Shopify-calculated totals; "Pay now" gets a signed changeset and calls `applyChangeset`; both buttons lock after the first press; every path ends in `done()`. |
@@ -290,3 +289,8 @@ Slices:
 - 2026-11-01 - Developer + Claude Code (Opus 5.5): remaining offer policy tests passed (developer confirmed): 0% discount (no 'Save' text, one price, full price added), price cap 0.3x (Jar skipped over the cap, Travel Packs offered), clearing both fields (back to defaults), 60% (error, nothing saved). Store now on the defaults: 15% / 1x. Offer policy verified.
 - 2026-11-02 - Claude Code (Opus 5.5): demo tag renamed to `upsell` everywhere (seed script `DEMO_TAG`, `demo-catalog.json`, tests, README, setup, checklists). 67/67 tests, lint clean. gruns-dev-store not changed yet: its 10 products and Settings tag still use the old tag. Settings row last saved 2026-11-01 18:34:13 UTC (10%, cap default): the P.5-P.7 saves aren't in this database; re-run or confirm the store.
 - 2026-11-02 - Claude Code (Opus 5.5): setup.md test checkout rewritten: the dev link redirects twice (cart link, then /checkouts/cn/...); new 'Test other baskets' steps print the cart link with curl and edit only the /cart/ part. Tunnel `biodiversity-employ-deputy-circular`.
+- 2026-11-02 - Claude Code (Opus 5.5): demo product images (developer request): 10 generated card images (shape + product name, marked "demo image") uploaded to gruns-dev-store via staged uploads + `productUpdate` media; all READY. Not in the repo or the seed script.
+- 2026-11-02 - Claude Code (Opus 5.5): dev-only **Open test checkout** on Offer preview (approved plan; developer-approved exception to the no-demo-tooling-in-the-app rule). Pure `app/services/offers/dev-checkout-link.js` + `.server.js` (reads the extension uid/name and config.js APP_URL; null when NODE_ENV=production). Warns when config.js APP_URL isn't the dev tunnel. Built link matches Shopify's real redirect for the Pouch exactly. 73/73 tests (6 new), lint clean. Developer to restart dev and test.
+- 2026-11-02 - Claude Code (Opus 5.5): product detail page (developer request): `app/routes/app.intelligence_.$productId.jsx` (read-only) + pure `app/services/catalog/product-detail.js` (profile current/out of date/not enriched; flags UPGRADE and below-0.6 relationships). Product names on Product intelligence link to it. 79/79 tests (6 new), lint clean. Store state: Settings tag saved as `upsell` at 14:52 UTC while products still carry `case-study-demo`, so all 10 products are retired and relationships are 0 until the tags match (re-adding means a new AI run). Offer decisions/events cleared after a backup (`../backups/dev-2026-11-02.sqlite`).
+- 2026-11-02 - Claude Code (Opus 5.5): automatic AI updates now **off by default** (developer request): `settings.server.js` DEFAULTS and `ShopSettings.autoEnrich @default(false)` (migration `shop_settings_auto_enrich_off`, copies existing rows); gruns-dev-store set to off. Setup step 9 and README quick start now say to press Run AI update. Earlier: an accidental AI run during the fresh-scan prep was stopped (dev server stopped) and profiles, relationships and analytics cleared again; the store's products now carry `upsell` (Canvas Tote also has a stray `its` tag).
+- 2026-11-02 - Claude Code (Opus 5.5): presentation cleanup (developer-approved): removed `CHANGELOG.md` (the Shopify template's changelog, not this project's) and `GEMINI.md` (unused); the local path in this file's header made relative.

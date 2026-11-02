@@ -113,9 +113,11 @@ The extension runs in the buyer's browser and calls the backend through the tunn
 In the app, open **Settings**, set **Upsell tag** to `upsell` and press **Save and sync**.
 
 - Do this whatever else is in the store. Only active products with that tag enter the app, so sample data or your own products stay out and add no AI cost.
-- The sync adds the 10 demo products, and the AI then builds profiles and relationships. That takes about 1.5 minutes for 10 products.
+- The sync adds the 10 demo products as **pending**. Automatic AI updates are off by default, so no AI runs yet.
+- Press **Run AI update** (in the same Settings page). The AI builds profiles and relationships, which takes about 1.5 minutes for 10 products.
 - Open **Product intelligence** and wait until all 10 show as enriched with relationships listed.
-- If they show as failed, check `OPENAI_API_KEY` and `OPENAI_MODEL`, then press **Run AI update** in Settings.
+- If they show as failed, check `OPENAI_API_KEY` and `OPENAI_MODEL`, then press **Run AI update** again.
+- To have product changes from Shopify enriched right away from now on, turn **Automatic AI updates** on in Settings. Off, they wait for your next run.
 
 To check before a real checkout, open **Offer preview**, add the 28-Day Pouch, and confirm that an offer appears.
 
@@ -136,7 +138,11 @@ A normal storefront checkout skips the post-purchase page while `shopify app dev
 
 ### Test other baskets
 
-The checkout URL belongs to one checkout, so you can't change the basket by editing it. Change the cart link instead:
+The checkout URL belongs to one checkout, so you can't change the basket by editing it.
+
+**The quick way:** open **Offer preview** in the app, build the basket, and press **Open test checkout**. It opens the cart link for that exact basket in a new tab, so you can compare the preview's pick with the real offer page. The button appears only while the app runs in development, and a warning shows if `APP_URL` in `config.js` doesn't match this run's tunnel.
+
+**By hand,** change the cart link:
 
 1. Print the cart link. Paste your own dev link from step 2:
 
@@ -166,7 +172,7 @@ Baskets worth trying: the 28-Day Pouch, the Powder, the Pouch plus the Starter B
 | Checkout goes straight to the thank-you page | Not opened through the dev link, or a cart link edited without its query parameters ([Test other baskets](#test-other-baskets)); stale `APP_URL` in `config.js`; or no offer for that basket. The dev terminal logs one `[offer]` line per checkout with the reason |
 | Cart link shows a password page | Enter the storefront password (step 5), then open the link again |
 | No offers in Offer preview | The AI step hasn't finished or failed (step 9), or the upsell tag doesn't match the products' tag |
-| Products stay pending | Automatic AI updates are off in Settings; press **Run AI update** |
+| Products stay pending | Automatic AI updates are off (the default); press **Run AI update** in Settings |
 | Errors after pulling new code | Run `npm run setup` again and restart `shopify app dev`; the dev server caches the database client |
 
 The seed script's dry run has been tested against the case study's store, and its pure parts are unit-tested. A full run on an empty store has not been done yet.

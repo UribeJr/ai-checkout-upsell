@@ -70,7 +70,7 @@ shopify app dev
 Then:
 1. Copy the tunnel URL into `extensions/intelligent-offer/src/config.js`.
 2. In the app's **Settings**, set the upsell tag to `upsell` and press **Save and sync**.
-3. Wait until **Product intelligence** shows all 10 products enriched.
+3. Press **Run AI update** in Settings (automatic AI updates are off by default), then wait until **Product intelligence** shows all 10 products enriched.
 4. Run a test checkout through the dev link, paying with card `1` ([how](docs/setup.md#run-a-test-checkout)).
 
 ## Documentation
@@ -87,7 +87,7 @@ Then:
 ## Testing
 
 ```sh
-npm test       # 67 unit tests: ranking, validators, token parsing, events, analytics, upsell tag, offer policy, seed planning
+npm test       # 79 unit tests: ranking, validators, token parsing, events, analytics, upsell tag, offer policy, product detail, dev checkout link, seed planning
 npm run lint
 ```
 

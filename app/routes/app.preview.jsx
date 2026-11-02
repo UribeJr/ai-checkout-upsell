@@ -3,6 +3,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { fetchLiveProducts, findOffer } from "../services/offers/candidate-engine.server";
+import { getDevCheckoutLink } from "../services/offers/dev-checkout-link.server";
 
 // Offer preview: build a basket and see which post-purchase offer the engine
 // would choose, and why every other candidate wasn't chosen. Read-only: it
@@ -39,7 +40,15 @@ export const loader = async ({ request }) => {
     (id) => id in titles,
   );
 
-  const page = { products, basket: [], subtotal: 0, currencyCode: null, decision: null, candidates: [] };
+  const page = {
+    products,
+    basket: [],
+    subtotal: 0,
+    currencyCode: null,
+    decision: null,
+    candidates: [],
+    devCheckout: null,
+  };
   if (basketIds.length === 0) return page;
 
   // Like a checkout of one unit of each basket product (first available variant).
@@ -78,6 +87,11 @@ export const loader = async ({ request }) => {
       durationMs: decision.durationMs,
     },
     candidates: describeCandidates(decision, titles),
+    // Dev only (null in production): a test checkout for this same basket.
+    devCheckout: getDevCheckoutLink({
+      shop,
+      variantIds: basket.map((line) => line.variantId).filter(Boolean),
+    }),
   };
 };
 
@@ -125,7 +139,7 @@ function statusTone(status) {
 }
 
 export default function OfferPreview() {
-  const { products, basket, subtotal, currencyCode, decision, candidates } = useLoaderData();
+  const { products, basket, subtotal, currencyCode, decision, candidates, devCheckout } = useLoaderData();
   const navigate = useNavigate();
 
   const money = (amount) =>
@@ -208,6 +222,31 @@ export default function OfferPreview() {
               straight to the thank-you page.
             </s-banner>
           )}
+        </s-section>
+      )}
+
+      {devCheckout && (
+        <s-section heading="Test this basket at checkout (dev only)">
+          <s-stack gap="small-200">
+            {!devCheckout.configMatches && (
+              <s-banner tone="warning">
+                APP_URL in extensions/intelligent-offer/src/config.js is{" "}
+                {devCheckout.configuredAppUrl ?? "not set"}, but this dev server runs on{" "}
+                {devCheckout.appUrl}. Update it and save, or the checkout can&apos;t reach the
+                backend and skips the offer.
+              </s-banner>
+            )}
+            <s-paragraph>
+              Opens a checkout with one of each basket item and your local extension loaded. Use
+              fake contact details and pay with card number 1. The link stops working when you
+              restart shopify app dev.
+            </s-paragraph>
+            <s-stack direction="inline">
+              <s-button href={devCheckout.url} target="_blank">
+                Open test checkout
+              </s-button>
+            </s-stack>
+          </s-stack>
         </s-section>
       )}
 

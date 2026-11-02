@@ -242,9 +242,9 @@ export default function Settings() {
           </s-stack>
           <s-paragraph>
             On: product changes from Shopify are enriched by AI right away.
-            Off: changes are recorded and wait for Run AI update, so AI cost
-            only happens when you run it. Turning it on also processes anything
-            waiting.
+            Off (the default): changes are recorded and wait for Run AI update,
+            so AI cost only happens when you run it. Turning it on also
+            processes anything waiting.
           </s-paragraph>
 
           {queueRunning && (
