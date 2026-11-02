@@ -121,21 +121,49 @@ To check before a real checkout, open **Offer preview**, add the 28-Day Pouch, a
 
 ## Run a test checkout
 
-A normal storefront checkout skips the post-purchase page while `shopify app dev` is running. Use the dev link:
+A normal storefront checkout skips the post-purchase page while `shopify app dev` is running. Use the dev link, which loads your local extension into the checkout.
 
-1. Open `<tunnel URL>/extensions/dev-<extension uid>/purchase.post.render`. The uid is in `extensions/intelligent-offer/shopify.extension.toml`.
-2. It redirects to `https://<your-store>.myshopify.com/cart/<variant>:1?script_url=...&post_purchase_dev_api_key=...`. The query parameters are what load the local extension. To test another basket, change only the `/cart/...` part, using the paths the seed script printed, and keep everything after `?`. For several items, join them with commas: `/cart/<id>:1,<id>:1`.
-3. Fill in any test contact and address, and pay with card number `1`.
-4. The post-purchase page shows the offer. **Pay now** adds it to the order; **Decline this offer** goes to the thank-you page.
-5. Open **Analytics** to see the offer shown, accepted or declined, and the revenue.
+### Open the dev link
 
-Baskets worth trying: the 28-Day Pouch, the Powder, the Pouch plus the Starter Bundle, and the Canvas Tote.
+1. Make sure `APP_URL` in `extensions/intelligent-offer/src/config.js` is the tunnel URL from this run of `shopify app dev` (step 8).
+2. Open `<tunnel URL>/extensions/dev-<extension uid>/purchase.post.render` in your browser. The uid is in `extensions/intelligent-offer/shopify.extension.toml`.
+3. The link redirects twice:
+   - first to a **cart link**, `https://<your-store>.myshopify.com/cart/<variant id>:1?script_url=…`, with one product in it
+   - then straight on to the checkout, `https://<your-store>.myshopify.com/checkouts/cn/…`, which is what your address bar shows
+4. Fill in any test contact and address, and pay with card number `1`.
+5. The post-purchase page shows the offer. **Pay now** adds it to the order; **Decline this offer** goes to the thank-you page.
+6. Open **Analytics** to see the offer shown, accepted or declined, and the revenue.
+
+### Test other baskets
+
+The checkout URL belongs to one checkout, so you can't change the basket by editing it. Change the cart link instead:
+
+1. Print the cart link. Paste your own dev link from step 2:
+
+   ```sh
+   curl -s -o /dev/null -w "%{redirect_url}\n" "<tunnel URL>/extensions/dev-<extension uid>/purchase.post.render"
+   ```
+
+   It prints the cart link, for example:
+
+   ```text
+   https://my-dev-store.myshopify.com/cart/68350166466783:1?script_url=https%3A%2F%2F…&post_purchase_dev_api_key=…&uuid=dev-…&socket_url=wss%3A%2F%2F…
+   ```
+
+2. Replace only the `/cart/68350166466783:1` part with the basket you want, and keep everything from `?` on. The query parameters are what load your local extension; without them, checkout skips the post-purchase page.
+   - One item: `/cart/<variant id>:1`, using the paths the seed script printed (step 6).
+   - Several items, joined with commas: `/cart/<variant id>:1,<variant id>:1`.
+3. Open the edited link. Each open starts a new checkout.
+
+The cart link contains the tunnel URL, so print it again after every restart of `shopify app dev`.
+
+Baskets worth trying: the 28-Day Pouch, the Powder, the Pouch plus the Starter Bundle, and the Canvas Tote. Open **Offer preview** with the same basket first to see which offer to expect.
 
 ## Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|
-| Checkout goes straight to the thank-you page | Not opened through the dev link (missing query parameters); stale `APP_URL` in `config.js`; or no offer for that basket. The dev terminal logs one `[offer]` line per checkout with the reason |
+| Checkout goes straight to the thank-you page | Not opened through the dev link, or a cart link edited without its query parameters ([Test other baskets](#test-other-baskets)); stale `APP_URL` in `config.js`; or no offer for that basket. The dev terminal logs one `[offer]` line per checkout with the reason |
 | Cart link shows a password page | Enter the storefront password (step 5), then open the link again |
 | No offers in Offer preview | The AI step hasn't finished or failed (step 9), or the upsell tag doesn't match the products' tag |
 | Products stay pending | Automatic AI updates are off in Settings; press **Run AI update** |
