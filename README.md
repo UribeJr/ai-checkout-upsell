@@ -1,4 +1,4 @@
-# AI Post-Purchase Upsell (Shopify case study)
+# AI Post-Purchase Upsell 
 
 After a buyer pays, Shopify can show one more offer before the thank-you page. If the buyer accepts, the product is added to the same order, and Shopify charges only the difference. This app picks that offer: one related product the buyer is likely to want, with a short pitch written from facts the merchant has verified.
 
