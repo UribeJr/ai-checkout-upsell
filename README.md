@@ -69,7 +69,7 @@ shopify app dev
 
 Then:
 1. Copy the tunnel URL into `extensions/intelligent-offer/src/config.js`.
-2. In the app's **Settings**, set the upsell tag to `case-study-demo` and press **Save and sync**.
+2. In the app's **Settings**, set the upsell tag to `upsell` and press **Save and sync**.
 3. Wait until **Product intelligence** shows all 10 products enriched.
 4. Run a test checkout through the dev link, paying with card `1` ([how](docs/setup.md#run-a-test-checkout)).
 

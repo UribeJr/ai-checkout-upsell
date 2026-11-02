@@ -13,7 +13,7 @@ const product = {
   status: "ACTIVE",
   description: "A 28-day supply of chewable greens gummies.",
   productType: "Gummies",
-  tags: ["greens", "case-study-demo", "gummies"],
+  tags: ["greens", "upsell", "gummies"],
   options: [{ name: "Flavor", values: ["Original", "Berry"] }],
   variants: {
     nodes: [
@@ -29,11 +29,11 @@ const hashOf = (p) => buildSourceHash(p.title, buildSnapshot(p));
 test("snapshot keeps the verified facts and sorts tags", () => {
   const snapshot = buildSnapshot(product);
   assert.deepEqual(snapshot.verifiedFacts, ["56 gummies per pouch", "Resealable pouch"]);
-  assert.deepEqual(snapshot.tags, ["case-study-demo", "greens", "gummies"]);
+  assert.deepEqual(snapshot.tags, ["greens", "gummies", "upsell"]);
 });
 
 test("same content gives the same hash, regardless of tag order", () => {
-  const reordered = { ...product, tags: ["gummies", "greens", "case-study-demo"] };
+  const reordered = { ...product, tags: ["upsell", "gummies", "greens"] };
   assert.equal(hashOf(reordered), hashOf(product));
 });
 

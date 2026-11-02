@@ -3,7 +3,7 @@
  * for each product. No network here (tested in test/demo-catalog.test.js).
  */
 
-export const DEMO_TAG = "case-study-demo";
+export const DEMO_TAG = "upsell";
 
 export const FACTS_DEFINITION = {
   name: "Verified facts",

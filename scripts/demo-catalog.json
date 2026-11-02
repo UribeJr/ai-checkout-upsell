@@ -8,10 +8,10 @@
       "productType": "Gummies",
       "vendor": "Demo Greens Co.",
       "tags": [
-        "case-study-demo",
         "daily",
         "greens",
-        "gummies"
+        "gummies",
+        "upsell"
       ],
       "option": {
         "name": "Flavor",
@@ -44,10 +44,10 @@
       "productType": "Gummies",
       "vendor": "Demo Greens Co.",
       "tags": [
-        "case-study-demo",
         "greens",
         "gummies",
-        "travel"
+        "travel",
+        "upsell"
       ],
       "option": {
         "name": "Flavor",
@@ -74,10 +74,10 @@
       "productType": "Powder",
       "vendor": "Demo Greens Co.",
       "tags": [
-        "case-study-demo",
         "daily",
         "greens",
-        "powder"
+        "powder",
+        "upsell"
       ],
       "option": {
         "name": "Flavor",
@@ -111,9 +111,9 @@
       "vendor": "Demo Greens Co.",
       "tags": [
         "accessory",
-        "case-study-demo",
         "powder",
-        "shaker"
+        "shaker",
+        "upsell"
       ],
       "option": {
         "name": "Color",
@@ -147,9 +147,9 @@
       "vendor": "Demo Greens Co.",
       "tags": [
         "bundle",
-        "case-study-demo",
         "greens",
-        "gummies"
+        "gummies",
+        "upsell"
       ],
       "option": {
         "name": "Flavor",
@@ -176,9 +176,9 @@
       "vendor": "Demo Greens Co.",
       "tags": [
         "accessory",
-        "case-study-demo",
         "gummies",
-        "storage"
+        "storage",
+        "upsell"
       ],
       "option": {
         "name": "Finish",
@@ -206,9 +206,9 @@
       "vendor": "Demo Greens Co.",
       "tags": [
         "accessory",
-        "case-study-demo",
         "gummies",
-        "travel"
+        "travel",
+        "upsell"
       ],
       "option": {
         "name": "Finish",
@@ -235,9 +235,9 @@
       "productType": "Gummies",
       "vendor": "Demo Greens Co.",
       "tags": [
-        "case-study-demo",
         "evening",
-        "gummies"
+        "gummies",
+        "upsell"
       ],
       "option": {
         "name": "Flavor",
@@ -264,10 +264,10 @@
       "productType": "Drink Mix",
       "vendor": "Demo Greens Co.",
       "tags": [
-        "case-study-demo",
         "drink mix",
         "powder",
-        "travel"
+        "travel",
+        "upsell"
       ],
       "option": {
         "name": "Flavor",
@@ -294,9 +294,9 @@
       "productType": "Merchandise",
       "vendor": "Demo Greens Co.",
       "tags": [
-        "case-study-demo",
         "merchandise",
-        "tote"
+        "tote",
+        "upsell"
       ],
       "option": {
         "name": "Color",

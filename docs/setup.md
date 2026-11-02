@@ -61,7 +61,7 @@ npm run setup        # prisma generate + migrate (SQLite file prisma/dev.sqlite)
 
 ## 6. Demo catalog
 
-The demo uses 10 fictional products from "Demo Greens Co.", tagged `case-study-demo`. Each carries merchant-approved facts in the product metafield `custom.verified_facts` (list of single-line text), and those are the only facts the AI offer copy may use. The full data is in [`scripts/demo-catalog.json`](../scripts/demo-catalog.json). For your own products, see [Writing verified facts](verified-facts.md).
+The demo uses 10 fictional products from "Demo Greens Co.", tagged `upsell`. Each carries merchant-approved facts in the product metafield `custom.verified_facts` (list of single-line text), and those are the only facts the AI offer copy may use. The full data is in [`scripts/demo-catalog.json`](../scripts/demo-catalog.json). For your own products, see [Writing verified facts](verified-facts.md).
 
 **Option A: seed script (recommended).** This is standalone reviewer tooling, not part of the app, and it uses your own Shopify CLI login:
 
@@ -81,7 +81,7 @@ What the script does:
 
 **Option B: by hand in Shopify Admin.**
 1. Create the product metafield definition `custom.verified_facts` (list of single-line text).
-2. Create the products below as Active, with untracked inventory. Copy each product's description, tags (including `case-study-demo`) and facts from `scripts/demo-catalog.json`.
+2. Create the products below as Active, with untracked inventory. Copy each product's description, tags (including `upsell`) and facts from `scripts/demo-catalog.json`.
 
 | Product | Variants (price) | What it tests |
 |---|---|---|
@@ -110,7 +110,7 @@ The extension runs in the buyer's browser and calls the backend through the tunn
 
 ## 9. Limit the app to the demo products and build the AI data
 
-In the app, open **Settings**, set **Upsell tag** to `case-study-demo` and press **Save and sync**.
+In the app, open **Settings**, set **Upsell tag** to `upsell` and press **Save and sync**.
 
 - Do this whatever else is in the store. Only active products with that tag enter the app, so sample data or your own products stay out and add no AI cost.
 - The sync adds the 10 demo products, and the AI then builds profiles and relationships. That takes about 1.5 minutes for 10 products.

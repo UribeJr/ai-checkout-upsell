@@ -6,7 +6,7 @@ import {
   normalizeTag,
 } from "../app/services/catalog/catalog-scope.js";
 
-const product = (extra = {}) => ({ status: "ACTIVE", tags: ["case-study-demo", "travel"], ...extra });
+const product = (extra = {}) => ({ status: "ACTIVE", tags: ["upsell", "travel"], ...extra });
 
 test("no tag means every active product", () => {
   assert.equal(isInUpsellCatalog(product({ tags: [] }), null), true);
@@ -15,7 +15,7 @@ test("no tag means every active product", () => {
 
 test("with a tag, only active products that have it are in", () => {
   assert.equal(isInUpsellCatalog(product(), "travel"), true);
-  assert.equal(isInUpsellCatalog(product(), "upsell"), false);
+  assert.equal(isInUpsellCatalog(product(), "bundle"), false);
   assert.equal(isInUpsellCatalog(product({ status: "ARCHIVED" }), "travel"), false);
   assert.equal(isInUpsellCatalog(product({ status: "DRAFT" }), null), false);
   assert.equal(isInUpsellCatalog(null, null), false);
@@ -23,7 +23,7 @@ test("with a tag, only active products that have it are in", () => {
 });
 
 test("tag matching ignores case and surrounding spaces", () => {
-  assert.equal(isInUpsellCatalog(product({ tags: ["Case-Study-Demo "] }), "case-study-demo"), true);
+  assert.equal(isInUpsellCatalog(product({ tags: ["Upsell "] }), "upsell"), true);
 });
 
 test("the tag from Settings is trimmed; empty means all products", () => {
